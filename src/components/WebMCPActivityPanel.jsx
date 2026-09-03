@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Tag, Tooltip } from "@douyinfe/semi-ui";
+import { Trans, useTranslation } from "react-i18next";
 
 const ICONS = {
   inspect_schema: "bi-search",
@@ -18,6 +19,14 @@ const ICONS = {
   undo: "bi-arrow-counterclockwise",
 };
 
+const MUTATING_TOOLS = [
+  "apply_schema_changes",
+  "import_sql",
+  "arrange_tables",
+  "annotate_diagram",
+  "plan_removal",
+];
+
 function formatTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: "2-digit",
@@ -27,44 +36,57 @@ function formatTime(timestamp) {
 }
 
 /**
- * Floating "Agent activity" trail shown only in WebMCP-capable browsers.
- * Lists every tool call against this diagram and lets the user undo the most
- * recent agent change directly, keeping the human in control.
+ * Card shown while a `plan_removal` proposal awaits the human's decision.
+ * Confirming is deliberately a UI-only action: agents have no tool for it.
  */
 function ProposalCard({ proposal, onConfirm, onReject, readOnly }) {
+  const { t } = useTranslation();
   const { impact } = proposal;
   return (
     <div className="px-3 py-3 text-xs border-b border-red-400/40 bg-red-500/5">
       <div className="flex items-center gap-2 font-semibold text-red-500">
         <i className="bi bi-exclamation-triangle-fill" />
-        The agent proposes a removal
+        {t("webmcp_proposal_title")}
       </div>
       {proposal.reason && (
         <div className="mt-1 italic opacity-80">{proposal.reason}</div>
       )}
       <ul className="mt-2 space-y-1 list-disc ps-4">
-        {impact.tables.map((t) => (
-          <li key={`t-${t.name}`}>
-            Table <b>{t.name}</b> ({t.fieldCount} column
-            {t.fieldCount === 1 ? "" : "s"})
+        {impact.tables.map((table) => (
+          <li key={`t-${table.name}`}>
+            <Trans
+              i18nKey="webmcp_proposal_table"
+              count={table.fieldCount}
+              values={{ name: table.name, count: table.fieldCount }}
+              components={{ 1: <b /> }}
+            />
           </li>
         ))}
-        {impact.fields.map((f) => (
-          <li key={`f-${f.table}.${f.field}`}>
-            Column{" "}
-            <b>
-              {f.table}.{f.field}
-            </b>
+        {impact.fields.map((field) => (
+          <li key={`f-${field.table}.${field.field}`}>
+            <Trans
+              i18nKey="webmcp_proposal_field"
+              values={{ table: field.table, field: field.field }}
+              components={{ 1: <b /> }}
+            />
           </li>
         ))}
-        {impact.relationships.map((r) => (
-          <li key={`r-${r.name}`}>
-            Relationship <b>{r.name}</b> ({r.from} → {r.to})
+        {impact.relationships.map((rel) => (
+          <li key={`r-${rel.name}`}>
+            <Trans
+              i18nKey="webmcp_proposal_relationship"
+              values={{ name: rel.name, from: rel.from, to: rel.to }}
+              components={{ 1: <b /> }}
+            />
           </li>
         ))}
-        {impact.indexes.map((i) => (
-          <li key={`i-${i.table}.${i.index}`}>
-            Index <b>{i.index}</b> on {i.table}
+        {impact.indexes.map((index) => (
+          <li key={`i-${index.table}.${index.index}`}>
+            <Trans
+              i18nKey="webmcp_proposal_index"
+              values={{ name: index.index, table: index.table }}
+              components={{ 1: <b /> }}
+            />
           </li>
         ))}
       </ul>
@@ -77,20 +99,22 @@ function ProposalCard({ proposal, onConfirm, onReject, readOnly }) {
           onClick={onConfirm}
           icon={<i className="bi bi-trash" />}
         >
-          Confirm removal
+          {t("webmcp_confirm_removal")}
         </Button>
         <Button size="small" theme="light" onClick={onReject}>
-          Reject
+          {t("webmcp_reject")}
         </Button>
       </div>
-      <div className="mt-2 opacity-60">
-        Only you can confirm this; the agent cannot. Confirmed removals stay
-        undoable.
-      </div>
+      <div className="mt-2 opacity-60">{t("webmcp_proposal_note")}</div>
     </div>
   );
 }
 
+/**
+ * Floating "Agent activity" trail shown only in WebMCP-capable browsers.
+ * Lists every tool call against this diagram and lets the user undo the most
+ * recent agent change directly, keeping the human in control.
+ */
 export default function WebMCPActivityPanel({
   entries,
   canUndoLatest,
@@ -101,16 +125,10 @@ export default function WebMCPActivityPanel({
   onRejectProposal,
   readOnly,
 }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const changes = entries.filter(
-    (e) =>
-      [
-        "apply_schema_changes",
-        "import_sql",
-        "arrange_tables",
-        "annotate_diagram",
-        "plan_removal",
-      ].includes(e.tool) && e.ok,
+    (e) => MUTATING_TOOLS.includes(e.tool) && e.ok,
   );
   const expanded = !collapsed || Boolean(proposal);
 
@@ -123,13 +141,13 @@ export default function WebMCPActivityPanel({
         >
           <div className="flex items-center gap-2 font-semibold text-sm">
             <i className="bi bi-robot" />
-            Agent activity
+            {t("webmcp_agent_activity")}
             <Tag size="small" color="light-blue">
               {entries.length}
             </Tag>
             {proposal && (
               <Tag size="small" color="red">
-                needs your decision
+                {t("webmcp_needs_decision")}
               </Tag>
             )}
           </div>
@@ -151,8 +169,7 @@ export default function WebMCPActivityPanel({
           <div className="border-t border-zinc-300/40">
             {entries.length === 0 ? (
               <div className="px-3 py-3 text-xs opacity-70">
-                WebMCP tools are registered. Ask your browser agent to inspect
-                or change this diagram; its actions will appear here.
+                {t("webmcp_empty_activity")}
               </div>
             ) : (
               <div className="max-h-64 overflow-y-auto">
@@ -183,8 +200,8 @@ export default function WebMCPActivityPanel({
               <Tooltip
                 content={
                   canUndoLatest
-                    ? "Reverts the agent's most recent change"
-                    : "Only available while the agent's change is the latest edit (use Ctrl+Z otherwise)"
+                    ? t("webmcp_undo_last_hint")
+                    : t("webmcp_undo_last_disabled")
                 }
               >
                 <Button
@@ -195,7 +212,7 @@ export default function WebMCPActivityPanel({
                   onClick={onUndoLatest}
                   icon={<i className="bi bi-arrow-counterclockwise" />}
                 >
-                  Undo last agent change
+                  {t("webmcp_undo_last")}
                 </Button>
               </Tooltip>
               <Button
@@ -206,7 +223,7 @@ export default function WebMCPActivityPanel({
                 disabled={entries.length === 0}
                 onClick={onClear}
               >
-                Clear
+                {t("webmcp_clear")}
               </Button>
             </div>
           </div>

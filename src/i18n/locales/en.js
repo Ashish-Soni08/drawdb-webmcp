@@ -325,6 +325,34 @@ const en = {
     ai_import_failed: "AI import failed. Please try again.",
     edit_dbml: "Edit DBML",
     dbml_problem: "Ln {{line}}, Col {{column}}: {{message}}",
+    webmcp_agent_activity: "Agent activity",
+    webmcp_needs_decision: "needs your decision",
+    webmcp_empty_activity:
+      "WebMCP tools are registered. Ask your browser agent to inspect or change this diagram; its actions will appear here.",
+    webmcp_undo_last: "Undo last agent change",
+    webmcp_undo_last_hint: "Reverts the agent's most recent change",
+    webmcp_undo_last_disabled:
+      "Only available while the agent's change is the latest edit (use Ctrl+Z otherwise)",
+    webmcp_clear: "Clear",
+    webmcp_proposal_title: "The agent proposes a removal",
+    webmcp_proposal_table: "Table <1>{{name}}</1> ({{count}} columns)",
+    webmcp_proposal_table_one: "Table <1>{{name}}</1> ({{count}} column)",
+    webmcp_proposal_table_other: "Table <1>{{name}}</1> ({{count}} columns)",
+    webmcp_proposal_field: "Column <1>{{table}}.{{field}}</1>",
+    webmcp_proposal_relationship:
+      "Relationship <1>{{name}}</1> ({{from}} → {{to}})",
+    webmcp_proposal_index: "Index <1>{{name}}</1> on {{table}}",
+    webmcp_confirm_removal: "Confirm removal",
+    webmcp_reject: "Reject",
+    webmcp_proposal_note:
+      "Only you can confirm this; the agent cannot. Confirmed removals stay undoable.",
+    webmcp_agent_change: "Agent: {{summary}}",
+    webmcp_agent_change_confirmed: "Agent (confirmed by you): {{summary}}",
+    webmcp_agent_arranged: "Agent: arranged {{count}} tables",
+    webmcp_agent_added_area: "Agent: added area '{{name}}'",
+    webmcp_agent_added_note: "Agent: added note '{{name}}'",
+    webmcp_agent_annotated: "Agent: added {{notes}} notes, {{areas}} areas",
+    webmcp_reverted: "Reverted: {{message}}",
   },
 };
 

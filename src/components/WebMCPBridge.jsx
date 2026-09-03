@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Toast } from "@douyinfe/semi-ui";
+import { useTranslation } from "react-i18next";
 import { Action, ObjectType } from "../data/constants";
 import {
   useAreas,
@@ -54,6 +55,7 @@ export default function WebMCPBridge() {
   const { notes, setNotes } = useNotes();
   const { areas, setAreas } = useAreas();
   const { undoStack, setUndoStack, setRedoStack } = useUndoRedo();
+  const { t } = useTranslation();
   const [supported, setSupported] = useState(false);
   const [activity, setActivity] = useState([]);
   // The one removal proposal awaiting a human decision (agents cannot decide).
@@ -82,6 +84,7 @@ export default function WebMCPBridge() {
     setSelectedElement,
     setUndoStack,
     setRedoStack,
+    t,
   };
 
   // Baseline for generate_migration: the schema as loaded. Loading a diagram
@@ -177,7 +180,7 @@ export default function WebMCPBridge() {
             ...plan.areas.map((a) => ({
               action: Action.ADD,
               element: ObjectType.AREA,
-              message: `SchemaPair agent: added area "${a.name}"`,
+              message: s.t("webmcp_agent_added_area", { name: a.name }),
               source: AGENT_UNDO_TAG,
             })),
           ]);
@@ -192,14 +195,17 @@ export default function WebMCPBridge() {
             ...plan.notes.map((n) => ({
               action: Action.ADD,
               element: ObjectType.NOTE,
-              message: `SchemaPair agent: added note "${n.title}"`,
+              message: s.t("webmcp_agent_added_note", { name: n.title }),
               source: AGENT_UNDO_TAG,
             })),
           ]);
         }
         s.setRedoStack([]);
         Toast.info({
-          content: `SchemaPair agent: added ${plan.notes.length} note(s), ${plan.areas.length} area(s)`,
+          content: s.t("webmcp_agent_annotated", {
+            notes: plan.notes.length,
+            areas: plan.areas.length,
+          }),
           duration: 4,
         });
       },
@@ -210,7 +216,9 @@ export default function WebMCPBridge() {
           relationships: s.diagram.relationships,
           enums: s.enums,
         };
-        const message = `SchemaPair agent: ${summarizeChanges(summary)}`;
+        const message = s.t("webmcp_agent_change", {
+          summary: summarizeChanges(summary),
+        });
 
         // One snapshot entry makes the whole tool call a single undo step. It
         // reuses the mechanism the DBML editor already uses: undo/redo diffs
@@ -266,7 +274,7 @@ export default function WebMCPBridge() {
             action: Action.MOVE,
             bulk: true,
             elements,
-            message: "SchemaPair agent: auto-arranged tables",
+            message: s.t("webmcp_agent_arranged", { count: elements.length }),
             source: AGENT_UNDO_TAG,
           },
         ]);
@@ -288,7 +296,7 @@ export default function WebMCPBridge() {
           false,
         );
         Toast.info({
-          content: `SchemaPair agent: arranged ${elements.length} table(s)`,
+          content: s.t("webmcp_agent_arranged", { count: elements.length }),
           duration: 4,
         });
         return elements.length;
@@ -331,14 +339,22 @@ export default function WebMCPBridge() {
       s.setNotes((prev) => prev.slice(0, -1));
       s.setUndoStack((prev) => prev.slice(0, -1));
       s.setRedoStack((prev) => [...prev, entry]);
-      record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
+      record({
+        tool: "undo",
+        ok: true,
+        summary: t("webmcp_reverted", { message: entry.message }),
+      });
       return;
     }
     if (entry.action === Action.ADD && entry.element === ObjectType.AREA) {
       s.setAreas((prev) => prev.slice(0, -1));
       s.setUndoStack((prev) => prev.slice(0, -1));
       s.setRedoStack((prev) => [...prev, entry]);
-      record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
+      record({
+        tool: "undo",
+        ok: true,
+        summary: t("webmcp_reverted", { message: entry.message }),
+      });
       return;
     }
     if (entry.bulk) {
@@ -347,7 +363,11 @@ export default function WebMCPBridge() {
         s.diagram.updateTable(element.id, element.undo);
       s.setUndoStack((prev) => prev.slice(0, -1));
       s.setRedoStack((prev) => [...prev, entry]);
-      record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
+      record({
+        tool: "undo",
+        ok: true,
+        summary: t("webmcp_reverted", { message: entry.message }),
+      });
       return;
     }
     const current = {
@@ -371,7 +391,11 @@ export default function WebMCPBridge() {
       ...prev,
       { ...entry, data: { snapshot: current } },
     ]);
-    record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
+    record({
+      tool: "undo",
+      ok: true,
+      summary: t("webmcp_reverted", { message: entry.message }),
+    });
   };
 
   const decideProposal = (accepted) => {
@@ -384,7 +408,9 @@ export default function WebMCPBridge() {
         relationships: s.diagram.relationships,
         enums: s.enums,
       };
-      const message = `SchemaPair agent (confirmed by you): ${summarizeRemoval(current.impact)}`;
+      const message = t("webmcp_agent_change_confirmed", {
+        summary: summarizeRemoval(current.impact),
+      });
       s.setUndoStack((prev) => [
         ...prev,
         {

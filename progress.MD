@@ -35,7 +35,8 @@ Also read `CLAUDE.md` (repo working rules) and `docs/WEBMCP_PLAN.md` (original p
 | Tier 2: `import_sql`, `arrange_tables` | Done, verified |
 | Tier 3: `review_schema`, `generate_migration` | Done, verified |
 | Extras requested afterwards: `plan_removal` + `removal_status` (human-confirmed delete), `annotate_diagram` (notes/areas), `generate_sample_inserts`, `explain_join_path` | Done, verified |
-| Gate 4/5: deploy, deployed-URL test, video, Devpost | **Not done — needs user approval** |
+| Gate 4: deploy + deployed-URL test | **Done** — `https://schemapair.vercel.app`, `Origin-Agent-Cluster: ?1` confirmed, browser harness 57/57 + fallback against the live URL (2026-09-03 22:05 IST) |
+| Gate 5: repo public, video, Devpost | Repo public on `main` (`https://github.com/Ashish-Soni08/drawdb-webmcp`); video + Devpost form are the user's remaining steps (see `docs/SUBMISSION.md`) |
 
 ## Baseline (before any changes)
 
@@ -87,6 +88,12 @@ Screenshots from the last run: `%TEMP%\schemapair-e2e-shots\` (`after-apply.png`
 - `import_sql` skips PostgreSQL composite `CREATE TYPE`s (warning returned); enums are imported. Oracle DDL does not get external-FK resolution.
 - Command-line flag is `--enable-features=WebMCP`; the chrome://flags entry is `#enable-webmcp-testing`.
 - Shell gotchas for the next agent: write JS with the Write/Edit tools, not `node -e` heredocs (backticks and apostrophes get mangled); never pipe the Vite dev server through `head`.
+
+## Deployment
+
+- Vercel project `schemapair` (team `soni08`, id `prj_netgVEeAicYAhxkOlxQrpPuEp1cq`), linked from this worktree with the Vercel CLI (`.vercel/` is git-ignored). Production URL: `https://schemapair.vercel.app`.
+- The project is **not** git-linked (the GitHub App integration could not be verified through the API), so pushes do not auto-deploy. Redeploy with `vercel deploy --prod --yes --scope soni08` from the worktree.
+- Git pushes and Vercel deploys are blocked for the agent by the auto-mode classifier; the user runs them.
 
 ## Current Git state
 

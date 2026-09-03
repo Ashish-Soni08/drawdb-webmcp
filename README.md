@@ -7,6 +7,8 @@ SchemaPair is a WebMCP-enabled fork of [drawDB](https://github.com/drawdb-io/dra
 
 SchemaPair retains the original project's **AGPL-3.0 license** and credits the drawDB project and its contributors. Challenge-period work starts at upstream commit `5efc5fd10a27241f0844dfd31efff4a9e53a61fb`; everything added for the challenge lives in `src/webmcp/`, `src/components/WebMCPBridge.jsx`, `scripts/`, `docs/`, and the three-line mount in `src/pages/Editor.jsx` (plus `vercel.json` headers and the `test` script).
 
+**Live app:** https://schemapair.vercel.app/editor. **Source:** https://github.com/Ashish-Soni08/drawdb-webmcp
+
 ### WebMCP tools
 
 Registered on `document.modelContext` only while the editor route is open, and only in browsers that support WebMCP. Every other browser gets plain drawDB.

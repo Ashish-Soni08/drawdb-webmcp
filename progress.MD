@@ -97,9 +97,10 @@ Screenshots from the last run: `%TEMP%\schemapair-e2e-shots\` (`after-apply.png`
 
 ## Current Git state
 
-- Branch: `agent/schemapair-webmcp-0903a`, **no commits made**.
-- Modified: `README.md`, `package.json`, `src/pages/Editor.jsx`, `vercel.json`.
-- Untracked: `CLAUDE.md`, `docs/`, `progress.MD`, `scripts/`, `src/components/WebMCPBridge.jsx`, `src/components/WebMCPActivityPanel.jsx`, `src/webmcp/` (13 modules + 9 test files).
+- Branch `agent/schemapair-webmcp-0903a`, fast-forwarded to the fork's `main` after every push. All work is committed in small conventional commits (docs → test runner → webmcp layers → tools → editor integration → e2e → deploy → docs → review fixes → i18n).
+- Later review pass: Prettier formatting applied to all new files, shared `sqlIdentifiers.js`, platform-aware Chrome path in the harness, and all user-facing strings moved to `webmcp_*` i18n keys.
+- `validate_schema.issues` follow the editor language (same text as the Problems panel); `tools.test.js` pins i18n to English so the suite is deterministic on non-English machines.
+- The main clone `G:\AI\Projects\webmcp-challenge\drawdb-webmcp` is still at the upstream baseline; always work in the feature worktree.
 
 ## Next steps (steps 2–5 need user approval)
 

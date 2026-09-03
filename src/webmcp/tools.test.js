@@ -1,8 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import i18n from "../i18n/i18n.js";
 import { createSchemaPairTools } from "./tools.js";
 
-/** Builds the four tools against an in-memory stand-in for the editor state. */
+// validate_schema reuses drawDB's localized issue messages; pin English so the
+// assertions below do not depend on the machine's language.
+await i18n.changeLanguage("en");
+
+/** Builds the tools against an in-memory stand-in for the editor state. */
 function harness(initial = {}) {
   const state = {
     database: "postgresql",

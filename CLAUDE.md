@@ -29,8 +29,11 @@ Read `progress.MD` first in every session; it is the hand-off document. Keep it 
   hard-code type lists.
 - Comments explain *why* and non-obvious invariants, not what the code already says.
 - Every user-visible string goes through `t()` with a key in `src/i18n/locales/en.js`
-  (WebMCP keys are prefixed `webmcp_`). Text returned to the agent in tool results is
-  English JSON by design and is not translated.
+  (WebMCP keys are prefixed `webmcp_`). Tool results returned to the agent are English
+  JSON, with one deliberate exception: `validate_schema.issues` and `review_schema`
+  "validator" findings reuse drawDB's `getIssues()` messages, which follow the editor's
+  language so they match the Problems panel. The structured `suggestions`/`fix` fields are
+  locale-independent; agents should key off those. Tests force `i18n` to English.
 - Run `npx prettier --write` on files you touch; CI only runs lint + build, but the repo
   ships a Prettier config and upstream expects it.
 

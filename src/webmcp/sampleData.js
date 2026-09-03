@@ -1,5 +1,5 @@
-import { DB } from "../data/constants";
 import { getRelationshipFields } from "../utils/utils";
+import { identifierQuoter } from "./sqlIdentifiers";
 
 /**
  * `generate_sample_inserts`: deterministic INSERT statements for the diagram,
@@ -8,12 +8,6 @@ import { getRelationshipFields } from "../utils/utils";
  */
 
 export const SAMPLE_LIMITS = Object.freeze({ rows: 20 });
-
-function quoteFor(database) {
-  if (database === DB.MYSQL || database === DB.MARIADB) return (s) => `\`${s}\``;
-  if (database === DB.MSSQL) return (s) => `[${s}]`;
-  return (s) => `"${s}"`;
-}
 
 const INT_TYPES = /INT|SERIAL|NUMBER$/i;
 const DEC_TYPES = /DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|MONEY/i;
@@ -41,7 +35,10 @@ function sampleValue(field, table, row, fkTarget) {
   }
   const base = `${table.name}_${field.name}_${row}`;
   const size = Number(field.size);
-  const text = size > 0 && base.length > size ? `${field.name.slice(0, Math.max(1, size - 2))}${row}`.slice(0, size) : base;
+  const text =
+    size > 0 && base.length > size
+      ? `${field.name.slice(0, Math.max(1, size - 2))}${row}`.slice(0, size)
+      : base;
   return `'${text.replace(/'/g, "''")}'`;
 }
 
@@ -51,7 +48,12 @@ export function orderTablesByDependency(tables, relationships) {
   const indegree = new Map(tables.map((t) => [t.id, 0]));
   const children = new Map(tables.map((t) => [t.id, []]));
   for (const r of relationships) {
-    if (!ids.has(r.startTableId) || !ids.has(r.endTableId) || r.startTableId === r.endTableId) continue;
+    if (
+      !ids.has(r.startTableId) ||
+      !ids.has(r.endTableId) ||
+      r.startTableId === r.endTableId
+    )
+      continue;
     // start = child (FK owner) depends on end = parent
     indegree.set(r.startTableId, indegree.get(r.startTableId) + 1);
     children.get(r.endTableId).push(r.startTableId);
@@ -82,7 +84,10 @@ export function orderTablesByDependency(tables, relationships) {
 export function generateSampleInserts(diagram, options = {}) {
   const rows = options.rows === undefined ? 3 : Number(options.rows);
   if (!Number.isInteger(rows) || rows < 1 || rows > SAMPLE_LIMITS.rows) {
-    return { ok: false, message: `"rows" must be an integer between 1 and ${SAMPLE_LIMITS.rows}.` };
+    return {
+      ok: false,
+      message: `"rows" must be an integer between 1 and ${SAMPLE_LIMITS.rows}.`,
+    };
   }
   const all = diagram.tables ?? [];
   const relationships = diagram.relationships ?? [];
@@ -96,13 +101,15 @@ export function generateSampleInserts(diagram, options = {}) {
       return { ok: false, message: `Unknown table(s): ${missing.join(", ")}.` };
     }
   }
-  if (selected.length === 0) return { ok: false, message: "The diagram has no tables." };
+  if (selected.length === 0)
+    return { ok: false, message: "The diagram has no tables." };
 
-  const q = quoteFor(diagram.database);
+  const q = identifierQuoter(diagram.database);
   const ordered = orderTablesByDependency(selected, relationships);
   const fkByField = new Map();
   for (const r of relationships) {
-    for (const p of getRelationshipFields(r)) fkByField.set(p.startFieldId, { rows });
+    for (const p of getRelationshipFields(r))
+      fkByField.set(p.startFieldId, { rows });
   }
 
   const statements = [];
@@ -112,9 +119,18 @@ export function generateSampleInserts(diagram, options = {}) {
     const columns = fields.map((f) => q(f.name)).join(", ");
     const values = [];
     for (let row = 1; row <= rows; row++) {
-      values.push(`(${fields.map((f) => sampleValue(f, table, row, fkByField.get(f.id))).join(", ")})`);
+      values.push(
+        `(${fields.map((f) => sampleValue(f, table, row, fkByField.get(f.id))).join(", ")})`,
+      );
     }
-    statements.push(`INSERT INTO ${q(table.name)} (${columns}) VALUES\n\t${values.join(",\n\t")};`);
+    statements.push(
+      `INSERT INTO ${q(table.name)} (${columns}) VALUES\n\t${values.join(",\n\t")};`,
+    );
   }
-  return { ok: true, sql: statements.join("\n\n"), tableOrder: ordered.map((t) => t.name), rows };
+  return {
+    ok: true,
+    sql: statements.join("\n\n"),
+    tableOrder: ordered.map((t) => t.name),
+    rows,
+  };
 }

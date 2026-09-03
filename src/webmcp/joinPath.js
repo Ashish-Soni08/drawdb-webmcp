@@ -1,17 +1,11 @@
-import { DB } from "../data/constants";
 import { getRelationshipFields } from "../utils/utils";
+import { identifierQuoter } from "./sqlIdentifiers";
 
 /**
  * `explain_join_path`: shortest chain of foreign keys between two tables,
  * plus a SELECT skeleton that joins along it. Read-only; helps users (and
  * agents) understand how to query the schema they are looking at.
  */
-
-function quoteFor(database) {
-  if (database === DB.MYSQL || database === DB.MARIADB) return (s) => `\`${s}\``;
-  if (database === DB.MSSQL) return (s) => `[${s}]`;
-  return (s) => `"${s}"`;
-}
 
 function findTable(tables, name) {
   if (typeof name !== "string" || !name) return null;
@@ -32,9 +26,13 @@ export function explainJoinPath(diagram, input) {
   const from = findTable(tables, input?.from);
   const to = findTable(tables, input?.to);
   if (!from || !to) {
-    return { ok: false, message: `Both "from" and "to" must be existing table names (got "${input?.from}" and "${input?.to}").` };
+    return {
+      ok: false,
+      message: `Both "from" and "to" must be existing table names (got "${input?.from}" and "${input?.to}").`,
+    };
   }
-  if (from.id === to.id) return { ok: false, message: "from and to are the same table." };
+  if (from.id === to.id)
+    return { ok: false, message: "from and to are the same table." };
 
   const byId = new Map(tables.map((t) => [t.id, t]));
   // Undirected adjacency: a join can walk a foreign key in either direction.
@@ -42,11 +40,25 @@ export function explainJoinPath(diagram, input) {
   for (const r of relationships) {
     if (!byId.has(r.startTableId) || !byId.has(r.endTableId)) continue;
     const pair = getRelationshipFields(r)[0];
-    const startField = byId.get(r.startTableId).fields.find((f) => f.id === pair.startFieldId);
-    const endField = byId.get(r.endTableId).fields.find((f) => f.id === pair.endFieldId);
+    const startField = byId
+      .get(r.startTableId)
+      .fields.find((f) => f.id === pair.startFieldId);
+    const endField = byId
+      .get(r.endTableId)
+      .fields.find((f) => f.id === pair.endFieldId);
     if (!startField || !endField) continue;
-    edges.get(r.startTableId).push({ next: r.endTableId, rel: r, nearField: startField.name, farField: endField.name });
-    edges.get(r.endTableId).push({ next: r.startTableId, rel: r, nearField: endField.name, farField: startField.name });
+    edges.get(r.startTableId).push({
+      next: r.endTableId,
+      rel: r,
+      nearField: startField.name,
+      farField: endField.name,
+    });
+    edges.get(r.endTableId).push({
+      next: r.startTableId,
+      rel: r,
+      nearField: endField.name,
+      farField: startField.name,
+    });
   }
 
   const prev = new Map([[from.id, null]]);
@@ -60,7 +72,12 @@ export function explainJoinPath(diagram, input) {
     }
   }
   if (!prev.has(to.id)) {
-    return { ok: true, connected: false, message: `No chain of relationships connects ${from.name} to ${to.name}.`, hops: [] };
+    return {
+      ok: true,
+      connected: false,
+      message: `No chain of relationships connects ${from.name} to ${to.name}.`,
+      hops: [],
+    };
   }
 
   const hops = [];
@@ -73,10 +90,12 @@ export function explainJoinPath(diagram, input) {
     });
   }
 
-  const q = quoteFor(diagram.database);
+  const q = identifierQuoter(diagram.database);
   const lines = [`SELECT *`, `FROM ${q(from.name)}`];
   for (const hop of hops) {
-    lines.push(`JOIN ${q(hop.to.table)} ON ${q(hop.to.table)}.${q(hop.to.field)} = ${q(hop.from.table)}.${q(hop.from.field)}`);
+    lines.push(
+      `JOIN ${q(hop.to.table)} ON ${q(hop.to.table)}.${q(hop.to.field)} = ${q(hop.from.table)}.${q(hop.from.field)}`,
+    );
   }
   return { ok: true, connected: true, hops, sql: lines.join("\n") };
 }

@@ -235,15 +235,16 @@ function check(name, pass, info) {
 
   // Gate: tools discovered
   let tools = null;
-  for (let i = 0; i < 20 && (!tools || tools.length < 16); i++) {
+  for (let i = 0; i < 20 && (!tools || tools.length < 17); i++) {
     tools = await evaluate("window.__sp.tools()");
-    if (!tools || tools.length < 16) await sleep(300);
+    if (!tools || tools.length < 17) await sleep(300);
   }
   const EXPECTED_TOOLS = [
     "annotate_diagram",
     "apply_schema_changes",
     "arrange_tables",
     "check_query",
+    "checkpoint",
     "explain_join_path",
     "generate_migration",
     "generate_sample_inserts",
@@ -263,7 +264,12 @@ function check(name, pass, info) {
     tools,
   );
 
-  // Pick PostgreSQL in the first-run modal
+  // Pick PostgreSQL in the first-run modal (it appears once IndexedDB has
+  // been read, so wait for it rather than clicking blindly).
+  for (let i = 0; i < 40; i++) {
+    if (await evaluate("window.__sp.hasText('PostgreSQL')")) break;
+    await sleep(250);
+  }
   await evaluate("window.__sp.clickText('PostgreSQL')");
   await sleep(300);
   await evaluate("window.__sp.clickText('Confirm')");
@@ -704,6 +710,71 @@ function check(name, pass, info) {
     inspect.counts,
   );
 
+  // Checkpoints: agent creates, agent restores, human restores from the panel
+  r = await evaluate(
+    "window.__sp.call('checkpoint', { action: 'create', name: 'before extras' })",
+  );
+  check("checkpoint create", r.ok && r.created.name === "before extras", r);
+  const cpTables = (await evaluate("window.__sp.call('inspect_schema')")).tables
+    .length;
+  r = await evaluate(
+    "window.__sp.call('apply_schema_changes', { operations: [{ op: 'add_table', name: 'scratch', fields: [{ name: 'id', type: 'INT', primary: true }] }] })",
+  );
+  check("mutation after checkpoint", r.ok);
+  r = await evaluate(
+    "window.__sp.call('checkpoint', { action: 'restore', name: 'before extras' })",
+  );
+  await sleep(400);
+  const afterRestore = (await evaluate("window.__sp.call('inspect_schema')"))
+    .tables;
+  check(
+    "agent restore returns to the checkpoint",
+    r.ok &&
+      afterRestore.length === cpTables &&
+      !afterRestore.some((x) => x.name === "scratch"),
+    afterRestore.length,
+  );
+  await evaluate("document.body.focus(); true");
+  await key("z", "KeyZ", 90, 2);
+  await sleep(400);
+  check(
+    "Ctrl+Z undoes the restore",
+    (await evaluate("window.__sp.call('inspect_schema')")).tables.some(
+      (x) => x.name === "scratch",
+    ),
+  );
+  const panelRestore = await evaluate(
+    "(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Restore' && !b.disabled); if (!b) return false; b.click(); return true; })()",
+  );
+  await sleep(400);
+  check(
+    "panel Restore button restores the checkpoint",
+    panelRestore &&
+      !(await evaluate("window.__sp.call('inspect_schema')")).tables.some(
+        (x) => x.name === "scratch",
+      ),
+  );
+  // Leave the undo history as the later checks expect: undo the panel restore
+  // and the scratch table (both agent-tagged entries).
+  await key("z", "KeyZ", 90, 2);
+  await sleep(300);
+  await key("z", "KeyZ", 90, 2);
+  await sleep(300);
+  check(
+    "checkpoint section cleaned up",
+    !(await evaluate("window.__sp.call('inspect_schema')")).tables.some(
+      (x) => x.name === "scratch",
+    ),
+  );
+  r = await evaluate("window.__sp.call('checkpoint', { action: 'list' })");
+  check(
+    "checkpoint list",
+    r.ok &&
+      r.checkpoints.length === 1 &&
+      r.checkpoints[0].snapshot === undefined,
+    r.checkpoints,
+  );
+
   // Query check, expandable activity entries, workspace listing
   r = await evaluate(
     "window.__sp.call('check_query', { sql: 'SELECT u.email, s.status FROM users u JOIN subscriptions s ON s.user_id = u.id WHERE s.status = \\'active\\'' })",
@@ -833,8 +904,8 @@ function check(name, pass, info) {
   );
   tools = await evaluate("window.__sp.tools()");
   check(
-    "after reload: exactly 16 tools (no duplicates)",
-    tools.length === 16,
+    "after reload: exactly 17 tools (no duplicates)",
+    tools.length === 17,
     tools,
   );
 
@@ -851,10 +922,10 @@ function check(name, pass, info) {
   await evaluate(helper);
   for (let i = 0; i < 20; i++) {
     tools = await evaluate("window.__sp.tools()");
-    if (tools && tools.length >= 16) break;
+    if (tools && tools.length >= 17) break;
     await sleep(300);
   }
-  check("back on /editor: 16 tools again", tools.length === 16, tools);
+  check("back on /editor: 17 tools again", tools.length === 17, tools);
 
   // Open a built-in template through the agent; the editor re-registers tools.
   r = await evaluate(

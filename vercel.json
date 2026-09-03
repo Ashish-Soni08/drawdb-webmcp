@@ -1,5 +1,19 @@
 {
     "rewrites": [
-        {"source": "/(.*)", "destination": "/"}
+        {
+            "source": "/(.*)",
+            "destination": "/"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Origin-Agent-Cluster",
+                    "value": "?1"
+                }
+            ]
+        }
     ]
 }

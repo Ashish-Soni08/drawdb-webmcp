@@ -123,6 +123,9 @@ test("exposes the thirteen tools with schemas and annotations", () => {
       "annotate_diagram",
       "generate_sample_inserts",
       "explain_join_path",
+      "check_query",
+      "list_workspace",
+      "open_diagram",
     ],
   );
   for (const tool of tools) {
@@ -490,6 +493,99 @@ test("plan_removal never deletes by itself; the bridge owns confirmation", async
   assert.equal(r.error.code, "read_only");
   r = await call("annotate_diagram", { notes: [{ content: "x" }] });
   assert.equal(r.error.code, "read_only");
+});
+
+test("check_query, list_workspace and open_diagram go through the bridge", async () => {
+  const state = {
+    database: "postgresql",
+    tables: [],
+    relationships: [],
+    enums: [],
+    types: [],
+    readOnly: false,
+    tableWidth: 220,
+    pan: { x: 0, y: 0 },
+  };
+  const opened = [];
+  const activity = [];
+  const tools = createSchemaPairTools({
+    getState: () => state,
+    applyChanges: (next) => {
+      state.tables = next.tables;
+      state.relationships = next.relationships;
+    },
+    record: (entry) => activity.push(entry),
+    listWorkspace: async () => ({
+      diagrams: [
+        { diagramId: "d1", name: "Shop", database: "postgresql", tables: 3 },
+      ],
+      templates: [
+        {
+          templateId: "t1",
+          title: "Blog database schema",
+          database: "generic",
+          tables: 5,
+        },
+      ],
+    }),
+    openDiagram: async ({ diagram, template }) => {
+      opened.push({ diagram, template });
+      if (diagram === "nope")
+        return { ok: false, message: "No saved diagram." };
+      return {
+        ok: true,
+        opening: {
+          kind: diagram ? "diagram" : "template",
+          name: diagram ?? template,
+        },
+      };
+    },
+  });
+  const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+  const call = async (name, input) =>
+    JSON.parse(await byName[name].execute(input));
+
+  await call("apply_schema_changes", {
+    operations: [
+      {
+        op: "add_table",
+        name: "users",
+        fields: [
+          { name: "id", type: "INT", primary: true },
+          { name: "email", type: "VARCHAR", unique: true },
+        ],
+      },
+    ],
+  });
+  let r = await call("check_query", {
+    sql: "SELECT email FROM users WHERE id = 1",
+  });
+  assert.equal(r.valid, true, JSON.stringify(r.problems));
+  r = await call("check_query", { sql: "SELECT nope FROM users" });
+  assert.equal(r.valid, false);
+  r = await call("check_query", {});
+  assert.equal(r.ok, false);
+
+  r = await call("list_workspace");
+  assert.equal(r.diagrams[0].name, "Shop");
+  assert.equal(r.templates[0].title, "Blog database schema");
+
+  r = await call("open_diagram", { template: "Blog database schema" });
+  assert.equal(r.ok, true);
+  assert.equal(r.opening.kind, "template");
+  r = await call("open_diagram", { diagram: "nope" });
+  assert.equal(r.error.code, "not_found");
+  r = await call("open_diagram", {});
+  assert.equal(r.error.code, "invalid_request");
+  assert.equal(opened.length, 2);
+
+  const last = activity[activity.length - 1];
+  assert.deepEqual(last.input, {});
+  assert.equal(
+    last.output.ok,
+    false,
+    "activity entries carry input and parsed output",
+  );
 });
 
 test("unexpected handler errors are returned as structured failures", async () => {

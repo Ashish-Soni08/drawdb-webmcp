@@ -12,6 +12,7 @@ import {
 import { ANNOTATE_LIMITS, planAnnotations } from "./annotate";
 import { generateSampleInserts, SAMPLE_LIMITS } from "./sampleData";
 import { explainJoinPath } from "./joinPath";
+import { checkQuery } from "./checkQuery";
 import { describeSchema } from "./describeSchema";
 import { generateSql, SQL_DIALECTS } from "./generateSql";
 import { toolFailure, toolSuccess } from "./modelContext";
@@ -137,7 +138,18 @@ function guard(bridge, toolName, handler) {
       result = toolFailure("internal_error", String(error?.message ?? error));
     }
     try {
-      bridge.record?.({ tool: toolName, ...describeResult(result) });
+      let output = result;
+      try {
+        output = JSON.parse(result);
+      } catch {
+        // keep the raw string
+      }
+      bridge.record?.({
+        tool: toolName,
+        input: input ?? {},
+        output,
+        ...describeResult(result),
+      });
     } catch {
       // The activity trail must never break a tool call.
     }
@@ -231,6 +243,26 @@ function describeResult(raw) {
     return {
       ok: true,
       summary: `added ${parsed.annotated.notes} note(s), ${parsed.annotated.areas} area(s)`,
+    };
+  }
+  if (parsed.problems) {
+    return {
+      ok: true,
+      summary: parsed.valid
+        ? `query is valid against ${parsed.tables.length} table(s)`
+        : `query has ${parsed.problems.length} problem(s)`,
+    };
+  }
+  if (parsed.diagrams) {
+    return {
+      ok: true,
+      summary: `listed ${parsed.diagrams.length} diagram(s), ${parsed.templates.length} template(s)`,
+    };
+  }
+  if (parsed.opening) {
+    return {
+      ok: true,
+      summary: `opening ${parsed.opening.kind} "${parsed.opening.name}"`,
     };
   }
   return { ok: true, summary: "completed" };
@@ -670,6 +702,78 @@ export function createSchemaPairTools(bridge) {
     }),
   };
 
+  const checkQueryTool = {
+    name: "check_query",
+    description:
+      "Validate an SQL query (SELECT/INSERT/UPDATE/DELETE) against the live diagram without running it: unknown tables or columns, ambiguous column names, joins without ON, and filter/join columns that lack an index (with ready-made add_index operations). Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sql: { type: "string" },
+        dialect: { type: "string", enum: [...SQL_DIALECTS] },
+      },
+      required: ["sql"],
+    },
+    annotations: { readOnlyHint: true },
+    execute: guard(bridge, "check_query", async (input) => {
+      const result = checkQuery(bridge.getState(), input);
+      if (!result.ok) return toolFailure("invalid_request", result.message);
+      return toolSuccess(result);
+    }),
+  };
+
+  const listWorkspaceTool = {
+    name: "list_workspace",
+    description:
+      "List the diagrams saved in this browser and the built-in templates, so you can open one with open_diagram. Read-only.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: true },
+    execute: guard(bridge, "list_workspace", async () => {
+      const workspace = await bridge.listWorkspace?.();
+      if (!workspace)
+        return toolFailure(
+          "unavailable",
+          "Workspace listing is not available here.",
+        );
+      return toolSuccess(workspace);
+    }),
+  };
+
+  const openDiagramTool = {
+    name: "open_diagram",
+    description:
+      "Open a saved diagram or start a new diagram from a built-in template (by id or name from list_workspace). The current diagram is autosaved first. After this call, re-run inspect_schema; the tools re-register for the new diagram.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        diagram: {
+          type: "string",
+          description: "diagramId or name of a saved diagram",
+        },
+        template: {
+          type: "string",
+          description: "templateId or title of a template",
+        },
+      },
+    },
+    execute: guard(bridge, "open_diagram", async (input) => {
+      if (!input.diagram && !input.template) {
+        return toolFailure("invalid_request", 'Pass "diagram" or "template".');
+      }
+      const result = await bridge.openDiagram?.(input);
+      if (!result)
+        return toolFailure(
+          "unavailable",
+          "Opening diagrams is not available here.",
+        );
+      if (!result.ok) return toolFailure("not_found", result.message);
+      return toolSuccess({
+        opening: result.opening,
+        message: `Opening ${result.opening.kind} "${result.opening.name}". Call inspect_schema next.`,
+      });
+    }),
+  };
+
   return [
     inspectSchema,
     applySchemaChanges,
@@ -684,5 +788,8 @@ export function createSchemaPairTools(bridge) {
     annotateTool,
     sampleInsertsTool,
     joinPathTool,
+    checkQueryTool,
+    listWorkspaceTool,
+    openDiagramTool,
   ];
 }

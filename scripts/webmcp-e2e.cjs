@@ -235,20 +235,23 @@ function check(name, pass, info) {
 
   // Gate: tools discovered
   let tools = null;
-  for (let i = 0; i < 20 && (!tools || tools.length < 13); i++) {
+  for (let i = 0; i < 20 && (!tools || tools.length < 16); i++) {
     tools = await evaluate("window.__sp.tools()");
-    if (!tools || tools.length < 13) await sleep(300);
+    if (!tools || tools.length < 16) await sleep(300);
   }
   const EXPECTED_TOOLS = [
     "annotate_diagram",
     "apply_schema_changes",
     "arrange_tables",
+    "check_query",
     "explain_join_path",
     "generate_migration",
     "generate_sample_inserts",
     "generate_sql",
     "import_sql",
     "inspect_schema",
+    "list_workspace",
+    "open_diagram",
     "plan_removal",
     "removal_status",
     "review_schema",
@@ -701,6 +704,48 @@ function check(name, pass, info) {
     inspect.counts,
   );
 
+  // Query check, expandable activity entries, workspace listing
+  r = await evaluate(
+    "window.__sp.call('check_query', { sql: 'SELECT u.email, s.status FROM users u JOIN subscriptions s ON s.user_id = u.id WHERE s.status = \\'active\\'' })",
+  );
+  check(
+    "check_query accepts a valid query and suggests indexes",
+    r.ok &&
+      r.valid === true &&
+      r.suggestions.length >= 1 &&
+      r.suggestions[0].operation.op === "add_index",
+    r.suggestions?.map((s) => s.operation.index.name),
+  );
+  r = await evaluate(
+    "window.__sp.call('check_query', { sql: 'SELECT nickname FROM users JOIN orders' })",
+  );
+  check(
+    "check_query reports unknown column/table and missing ON",
+    r.ok && r.valid === false && r.problems.length >= 2,
+    r.problems?.map((p) => p.code),
+  );
+  const clickedEntry = await evaluate(
+    "(() => { const row = [...document.querySelectorAll('span')].find(s => s.textContent === 'check_query'); if (!row) return false; row.parentElement.click(); return true; })()",
+  );
+  await sleep(400);
+  const expanded = await evaluate(
+    "(() => { const t = document.body.innerText; return t.includes('Input') && t.includes('Output') && t.includes('SELECT nickname'); })()",
+  );
+  check(
+    "activity entry expands to show input and output",
+    clickedEntry && expanded === true,
+    { clickedEntry, expanded },
+  );
+  r = await evaluate("window.__sp.call('list_workspace')");
+  check(
+    "list_workspace lists saved diagrams and built-in templates",
+    r.ok &&
+      Array.isArray(r.diagrams) &&
+      r.templates.length >= 1 &&
+      r.templates.some((t) => /blog/i.test(t.title)),
+    { diagrams: r.diagrams?.length, templates: r.templates?.length },
+  );
+
   // Generate SQL
   r = await evaluate("window.__sp.call('generate_sql')");
   check(
@@ -788,8 +833,8 @@ function check(name, pass, info) {
   );
   tools = await evaluate("window.__sp.tools()");
   check(
-    "after reload: exactly 13 tools (no duplicates)",
-    tools.length === 13,
+    "after reload: exactly 16 tools (no duplicates)",
+    tools.length === 16,
     tools,
   );
 
@@ -806,10 +851,44 @@ function check(name, pass, info) {
   await evaluate(helper);
   for (let i = 0; i < 20; i++) {
     tools = await evaluate("window.__sp.tools()");
-    if (tools && tools.length >= 13) break;
+    if (tools && tools.length >= 16) break;
     await sleep(300);
   }
-  check("back on /editor: 13 tools again", tools.length === 13, tools);
+  check("back on /editor: 16 tools again", tools.length === 16, tools);
+
+  // Open a built-in template through the agent; the editor re-registers tools.
+  r = await evaluate(
+    "window.__sp.call('open_diagram', { template: 'Blog database schema' })",
+  );
+  check(
+    "open_diagram accepts a template by title",
+    r.ok && r.opening.kind === "template",
+    r,
+  );
+  await sleep(2500);
+  await waitForApp();
+  await evaluate(helper);
+  for (let i = 0; i < 20; i++) {
+    tools = await evaluate("window.__sp.tools()");
+    if (tools && tools.length >= EXPECTED_TOOLS.length) break;
+    await sleep(300);
+  }
+  r = await evaluate("window.__sp.call('inspect_schema')");
+  // drawDB autosaves a loaded template as a new diagram and moves to its URL,
+  // so only the loaded content and the re-registered tools are asserted.
+  check(
+    "template loaded: tables present and tools registered",
+    tools.length === EXPECTED_TOOLS.length && r.ok && r.tables.length >= 3,
+    { tools: tools.length, tables: r.tables?.length },
+  );
+  r = await evaluate(
+    "window.__sp.call('open_diagram', { diagram: 'no-such-diagram' })",
+  );
+  check(
+    "open_diagram rejects unknown diagrams",
+    r.ok === false && r.error.code === "not_found",
+    r.error,
+  );
 
   console.log(
     "\nCONSOLE (filtered):",

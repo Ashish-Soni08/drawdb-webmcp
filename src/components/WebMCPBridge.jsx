@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Toast } from "@douyinfe/semi-ui";
 import { useTranslation } from "react-i18next";
 import { Action, ObjectType } from "../data/constants";
+import { db } from "../data/db";
 import {
   useAreas,
   useDiagram,
   useEnums,
   useLayout,
+  useNavigateWithParams,
   useNotes,
   useSelect,
   useSettings,
@@ -56,6 +58,7 @@ export default function WebMCPBridge() {
   const { areas, setAreas } = useAreas();
   const { undoStack, setUndoStack, setRedoStack } = useUndoRedo();
   const { t } = useTranslation();
+  const navigate = useNavigateWithParams();
   const [supported, setSupported] = useState(false);
   const [activity, setActivity] = useState([]);
   // The one removal proposal awaiting a human decision (agents cannot decide).
@@ -85,6 +88,7 @@ export default function WebMCPBridge() {
     setUndoStack,
     setRedoStack,
     t,
+    navigate,
   };
 
   // Baseline for generate_migration: the schema as loaded. Loading a diagram
@@ -166,6 +170,64 @@ export default function WebMCPBridge() {
         const current = proposalRef.current;
         if (current && current.id === id) return current;
         return decidedProposals.get(id) ?? null;
+      },
+      async listWorkspace() {
+        const [diagrams, templates] = await Promise.all([
+          db.diagrams.orderBy("lastModified").reverse().toArray(),
+          db.templates.toArray(),
+        ]);
+        return {
+          diagrams: diagrams.map((d) => ({
+            diagramId: d.diagramId,
+            name: d.name,
+            database: d.database,
+            tables: d.tables?.length ?? 0,
+            lastModified: d.lastModified
+              ? new Date(d.lastModified).toISOString()
+              : undefined,
+          })),
+          templates: templates.map((tpl) => ({
+            templateId: tpl.templateId,
+            title: tpl.title,
+            database: tpl.database,
+            tables: tpl.tables?.length ?? 0,
+            custom: Boolean(tpl.custom),
+          })),
+        };
+      },
+      async openDiagram({ diagram, template }) {
+        const lower = (v) => String(v).toLowerCase();
+        let target = null;
+        if (diagram) {
+          const all = await db.diagrams.toArray();
+          const found =
+            all.find((d) => d.diagramId === diagram) ??
+            all.find((d) => lower(d.name) === lower(diagram));
+          if (!found)
+            return { ok: false, message: `No saved diagram "${diagram}".` };
+          target = {
+            kind: "diagram",
+            name: found.name,
+            path: `/editor/diagrams/${found.diagramId}`,
+          };
+        } else {
+          const all = await db.templates.toArray();
+          const found =
+            all.find((tpl) => tpl.templateId === template) ??
+            all.find((tpl) => lower(tpl.title) === lower(template));
+          if (!found)
+            return { ok: false, message: `No template "${template}".` };
+          target = {
+            kind: "template",
+            name: found.title,
+            path: `/editor/templates/${found.templateId}`,
+          };
+        }
+        // Navigate after this call has returned its result: the route change
+        // remounts the editor and re-registers the tools.
+        const { navigate: go } = stateRef.current;
+        setTimeout(() => go(target.path), 50);
+        return { ok: true, opening: { kind: target.kind, name: target.name } };
       },
       addAnnotations(plan) {
         const s = stateRef.current;

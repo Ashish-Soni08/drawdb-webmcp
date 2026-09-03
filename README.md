@@ -3,7 +3,7 @@
     <h3>Agent-native database diagramming powered by drawDB and WebMCP</h3>
 </div>
 
-SchemaPair is a WebMCP-enabled fork of [drawDB](https://github.com/drawdb-io/drawdb), built for [The WebMCP Challenge](https://webmcp.devpost.com/). It keeps the full drawDB editor and adds sixteen browser-native [WebMCP](https://developer.chrome.com/docs/ai/webmcp) tools, so an AI agent running in the browser can inspect the diagram that is open on the canvas, make bounded schema changes, validate the result, and generate SQL — while the human keeps the visual canvas, undo, and final control.
+SchemaPair is a WebMCP-enabled fork of [drawDB](https://github.com/drawdb-io/drawdb), built for [The WebMCP Challenge](https://webmcp.devpost.com/). It keeps the full drawDB editor and adds seventeen browser-native [WebMCP](https://developer.chrome.com/docs/ai/webmcp) tools, so an AI agent running in the browser can inspect the diagram that is open on the canvas, make bounded schema changes, validate the result, and generate SQL — while the human keeps the visual canvas, undo, and final control.
 
 SchemaPair retains the original project's **AGPL-3.0 license** and credits the drawDB project and its contributors. Challenge-period work starts at upstream commit `5efc5fd10a27241f0844dfd31efff4a9e53a61fb`; everything added for the challenge lives in `src/webmcp/`, `src/components/WebMCPBridge.jsx`, `scripts/`, `docs/`, and the three-line mount in `src/pages/Editor.jsx` (plus `vercel.json` headers and the `test` script).
 
@@ -29,6 +29,7 @@ Registered on `document.modelContext` only while the editor route is open, and o
 | `arrange_tables` | mutating (layout only) | Auto-arranges tables with the editor's layout engine, with comfortable spacing so relationship labels stay readable. One undo step. |
 | `plan_removal` | proposal | Proposes removing tables, columns, relationships, or indexes and returns the full cascade impact. **Nothing is deleted**: a confirmation card appears in the editor and only the human can click Confirm (or Reject). Confirmed removals are one undo step. |
 | `removal_status` | read-only | Reports whether a proposal is pending, confirmed, rejected, or superseded. |
+| `checkpoint` | mutating (restore) | Named snapshots of the schema for the session: `create`, `list`, `restore`. Restoring is one undo step, and the activity panel offers a Restore button so the human can roll back without the agent. |
 | `list_workspace` | read-only | Lists the diagrams saved in this browser and the built-in templates. |
 | `open_diagram` | navigation | Opens a saved diagram or starts from a built-in template; the current diagram is autosaved first. |
 
@@ -50,6 +51,7 @@ An **Agent activity** panel on the canvas lists every tool call (click one to se
    - "Remove the invoices table." (the agent proposes; you confirm in the Agent activity panel)
    - "Does this query still work against the schema? SELECT u.email FROM users u JOIN subscriptions s ON s.user_id = u.id"
    - "Open the blog template and show me what it contains."
+   - "Create a checkpoint called before-refactor, then rename users.name to full_name." (then click Restore in the panel)
    - "Tidy up the layout."
    - Press Ctrl+Z on the canvas to undo the agent's last change.
 

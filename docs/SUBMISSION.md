@@ -12,7 +12,7 @@ Deadline: originally September 3, 2026, 1:00 PM PDT; Devpost granted everyone a 
 
 **SchemaPair: agent-native database diagramming, built on drawDB and WebMCP.**
 
-Database diagrams are visual, but today an AI agent can only "help" by guessing at the DOM or working on a separate copy of your schema. SchemaPair turns the drawDB editor into a shared workbench: the human keeps the canvas, undo, and the final say, and the agent gets sixteen real capabilities of the app through `document.modelContext.registerTool()`.
+Database diagrams are visual, but today an AI agent can only "help" by guessing at the DOM or working on a separate copy of your schema. SchemaPair turns the drawDB editor into a shared workbench: the human keeps the canvas, undo, and the final say, and the agent gets seventeen real capabilities of the app through `document.modelContext.registerTool()`.
 
 **Why WebMCP fits.** Schema design is a tight loop of inspect → change → validate → generate. Every step already exists as application logic inside drawDB (its validator, its SQL exporters, its SQL importer, its migration generator). WebMCP lets us expose those exact functions to the agent in the page, against the live editor state, instead of rebuilding them behind a chatbot or scraping the UI.
 
@@ -23,9 +23,10 @@ Database diagrams are visual, but today an AI agent can only "help" by guessing 
 - Check whether an existing SQL query still works against the schema, with index suggestions.
 - Annotate the diagram with notes and grouped areas, tidy the layout, or open saved diagrams and templates.
 - Removals are proposal-only: the agent calls `plan_removal`, the editor shows the full cascade (relationships, indexes) on a confirmation card, and only a human click applies it. The agent cannot confirm.
-- An "Agent activity" panel lists every tool call with an "Undo last agent change" button.
+- Checkpoints: the agent (or you) saves a named snapshot before risky changes and either of you can restore it; restores are undoable.
+- An "Agent activity" panel lists every tool call (click to see input/output) with an "Undo last agent change" button.
 
-**Implementation overview.** A single `WebMCPBridge` React component mounted in the editor registers the tools under one `AbortController` (feature-detected; browsers without WebMCP get plain drawDB). Handlers read live state through refs, validate whole requests before touching state, and commit changes as one snapshot entry on drawDB's own undo stack, so autosave, Ctrl+Z and the timeline all work unchanged. Pure planners (`src/webmcp/*.js`) are unit-tested with Node's test runner (52 tests); a Chrome DevTools-Protocol harness runs the complete workflow in a real WebMCP-enabled Chrome (64 checks) against the dev server, the production bundle and the deployed URL. Generated SQL is text only and is never executed.
+**Implementation overview.** A single `WebMCPBridge` React component mounted in the editor registers the tools under one `AbortController` (feature-detected; browsers without WebMCP get plain drawDB). Handlers read live state through refs, validate whole requests before touching state, and commit changes as one snapshot entry on drawDB's own undo stack, so autosave, Ctrl+Z and the timeline all work unchanged. Pure planners (`src/webmcp/*.js`) are unit-tested with Node's test runner (53 tests); a Chrome DevTools-Protocol harness runs the complete workflow in a real WebMCP-enabled Chrome (71 checks) against the dev server, the production bundle and the deployed URL. Generated SQL is text only and is never executed.
 
 **Attribution.** SchemaPair is a WebMCP-enabled fork of drawDB. It retains the AGPL-3.0 license and credits the drawDB project and its contributors. All challenge-period work starts at upstream commit `5efc5fd` and lives in `src/webmcp/`, `src/components/WebMCPBridge.jsx`, `src/components/WebMCPActivityPanel.jsx`, `scripts/`, and `docs/`.
 
@@ -47,7 +48,7 @@ Database diagrams are visual, but today an AI agent can only "help" by guessing 
 
 | Time | On screen | Say |
 | --- | --- | --- |
-| 0:00–0:15 | Empty SchemaPair editor, Agent activity panel visible | "Database diagrams are visual, so agents usually have to guess at the DOM. SchemaPair is drawDB with sixteen WebMCP tools, so the agent works on the same live canvas you do." |
+| 0:00–0:15 | Empty SchemaPair editor, Agent activity panel visible | "Database diagrams are visual, so agents usually have to guess at the DOM. SchemaPair is drawDB with seventeen WebMCP tools, so the agent works on the same live canvas you do." |
 | 0:15–0:30 | Tool inspector or agent listing tools | "The tools are registered with document.modelContext, feature-detected, and cleaned up when you leave the editor." |
 | 0:30–1:10 | Prompt: build the SaaS schema; canvas pans, tables and FKs appear, toast + activity entry | "One prompt, four tables and three foreign keys. Every change is validated before it touches the canvas, and it lands as a single undo step." |
 | 1:10–1:35 | Prompt: validate and fix; Problems badge goes to 0 | "Validate reuses drawDB's own checks and returns ready-made fixes. The agent applies them; nothing is guessed." |

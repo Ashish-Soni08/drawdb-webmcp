@@ -24,12 +24,18 @@ const users = {
   color: "#175e7a",
   comment: "",
   indices: [],
-  fields: [field("u1", "id", { primary: true, notNull: true, increment: true })],
+  fields: [
+    field("u1", "id", { primary: true, notNull: true, increment: true }),
+  ],
 };
 
 test("no changes -> empty migration", () => {
   const base = snapshotSchema({ tables: [users], relationships: [] });
-  const r = buildMigration(base, snapshotSchema({ tables: [{ ...users, x: 500 }], relationships: [] }), "postgresql");
+  const r = buildMigration(
+    base,
+    snapshotSchema({ tables: [{ ...users, x: 500 }], relationships: [] }),
+    "postgresql",
+  );
   assert.equal(r.ok, true);
   assert.equal(r.changeCount, 0, "position changes are ignored");
   assert.equal(r.up, "");
@@ -39,7 +45,13 @@ test("adding a table and a column produces up and down SQL", () => {
   const base = snapshotSchema({ tables: [users], relationships: [] });
   const after = snapshotSchema({
     tables: [
-      { ...users, fields: [...users.fields, field("u2", "email", { type: "VARCHAR", size: 255, notNull: true })] },
+      {
+        ...users,
+        fields: [
+          ...users.fields,
+          field("u2", "email", { type: "VARCHAR", size: 255, notNull: true }),
+        ],
+      },
       {
         id: "p",
         name: "posts",
@@ -48,7 +60,10 @@ test("adding a table and a column produces up and down SQL", () => {
         color: "#175e7a",
         comment: "",
         indices: [],
-        fields: [field("p1", "id", { primary: true, notNull: true }), field("p2", "user_id", { notNull: true })],
+        fields: [
+          field("p1", "id", { primary: true, notNull: true }),
+          field("p2", "user_id", { notNull: true }),
+        ],
       },
     ],
     relationships: [
@@ -80,6 +95,9 @@ test("dialect handling mirrors generate_sql", () => {
   const after = snapshotSchema({ tables: [users], relationships: [] });
   assert.equal(buildMigration(base, after, "postgresql", "mysql").ok, false);
   assert.equal(buildMigration(base, after, "generic").dialect, "postgresql");
-  assert.equal(buildMigration(base, after, "generic", "mysql").dialect, "mysql");
+  assert.equal(
+    buildMigration(base, after, "generic", "mysql").dialect,
+    "mysql",
+  );
   assert.equal(buildMigration(base, after, "generic", "cobol").ok, false);
 });

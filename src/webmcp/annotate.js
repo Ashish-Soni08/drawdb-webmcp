@@ -7,13 +7,18 @@ import { getTableHeight } from "../utils/utils";
  * leaves committing them (with undo entries) to the bridge.
  */
 
-export const ANNOTATE_LIMITS = Object.freeze({ notes: 10, areas: 10, textLength: 2000 });
+export const ANNOTATE_LIMITS = Object.freeze({
+  notes: 10,
+  areas: 10,
+  textLength: 2000,
+});
 
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const AREA_PADDING = 40;
 const NOTE_GAP = 24;
 
-const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isObject = (v) =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
 
 function findTable(tables, name) {
   if (typeof name !== "string" || !name) return null;
@@ -35,10 +40,26 @@ export function planAnnotations(input, state, layout) {
   const notesIn = Array.isArray(input?.notes) ? input.notes : [];
   const areasIn = Array.isArray(input?.areas) ? input.areas : [];
   if (notesIn.length === 0 && areasIn.length === 0) {
-    return { ok: false, errors: [{ path: "input", message: 'Provide "notes" and/or "areas" arrays.' }] };
+    return {
+      ok: false,
+      errors: [
+        { path: "input", message: 'Provide "notes" and/or "areas" arrays.' },
+      ],
+    };
   }
-  if (notesIn.length > ANNOTATE_LIMITS.notes || areasIn.length > ANNOTATE_LIMITS.areas) {
-    return { ok: false, errors: [{ path: "input", message: `At most ${ANNOTATE_LIMITS.notes} notes and ${ANNOTATE_LIMITS.areas} areas per call.` }] };
+  if (
+    notesIn.length > ANNOTATE_LIMITS.notes ||
+    areasIn.length > ANNOTATE_LIMITS.areas
+  ) {
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "input",
+          message: `At most ${ANNOTATE_LIMITS.notes} notes and ${ANNOTATE_LIMITS.areas} areas per call.`,
+        },
+      ],
+    };
   }
 
   const tables = state.tables ?? [];
@@ -46,7 +67,7 @@ export function planAnnotations(input, state, layout) {
   const areas = [];
   let noteIndex = (state.notes ?? []).length;
   let areaIndex = (state.areas ?? []).length;
-  let stackY = (layout.pan?.y ?? 0);
+  let stackY = layout.pan?.y ?? 0;
 
   areasIn.forEach((a, i) => {
     const path = `areas[${i}]`;
@@ -55,7 +76,10 @@ export function planAnnotations(input, state, layout) {
       return;
     }
     if (!Array.isArray(a.tables) || a.tables.length === 0) {
-      errors.push({ path, message: 'Area needs a non-empty "tables" array of table names.' });
+      errors.push({
+        path,
+        message: 'Area needs a non-empty "tables" array of table names.',
+      });
       return;
     }
     const members = [];
@@ -73,8 +97,14 @@ export function planAnnotations(input, state, layout) {
     }
     const minX = Math.min(...members.map((t) => t.x)) - AREA_PADDING;
     const minY = Math.min(...members.map((t) => t.y)) - AREA_PADDING;
-    const maxX = Math.max(...members.map((t) => t.x + layout.tableWidth)) + AREA_PADDING;
-    const maxY = Math.max(...members.map((t) => t.y + getTableHeight(t, layout.tableWidth, false))) + AREA_PADDING;
+    const maxX =
+      Math.max(...members.map((t) => t.x + layout.tableWidth)) + AREA_PADDING;
+    const maxY =
+      Math.max(
+        ...members.map(
+          (t) => t.y + getTableHeight(t, layout.tableWidth, false),
+        ),
+      ) + AREA_PADDING;
     areas.push({
       id: areaIndex++,
       name: a.name.trim(),
@@ -94,7 +124,10 @@ export function planAnnotations(input, state, layout) {
       return;
     }
     if (n.content.length > ANNOTATE_LIMITS.textLength) {
-      errors.push({ path, message: `Note content is longer than ${ANNOTATE_LIMITS.textLength} characters.` });
+      errors.push({
+        path,
+        message: `Note content is longer than ${ANNOTATE_LIMITS.textLength} characters.`,
+      });
       return;
     }
     let x;
@@ -117,7 +150,10 @@ export function planAnnotations(input, state, layout) {
       id: noteIndex++,
       x: Math.round(x),
       y: Math.round(y),
-      title: typeof n.title === "string" && n.title.trim() ? n.title.trim() : `note_${noteIndex - 1}`,
+      title:
+        typeof n.title === "string" && n.title.trim()
+          ? n.title.trim()
+          : `note_${noteIndex - 1}`,
       content: n.content,
       locked: false,
       color: n.color && COLOR_RE.test(n.color) ? n.color : defaultNoteTheme,

@@ -48,7 +48,10 @@ export function suggestFixes(diagram) {
     }
 
     for (const field of fields) {
-      if ((field.type === "ENUM" || field.type === "SET") && !(field.values?.length)) {
+      if (
+        (field.type === "ENUM" || field.type === "SET") &&
+        !field.values?.length
+      ) {
         suggestions.push({
           table: table.name,
           field: field.name,

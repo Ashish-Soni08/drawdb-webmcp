@@ -23,14 +23,25 @@ test("suggests a primary key, reusing an existing id column when present", () =>
     tables: [
       { id: "a", name: "a", indices: [], fields: [field("a1", "ref")] },
       { id: "b", name: "b", indices: [], fields: [field("b1", "ID")] },
-      { id: "c", name: "c", indices: [], fields: [field("c1", "id", { primary: true })] },
+      {
+        id: "c",
+        name: "c",
+        indices: [],
+        fields: [field("c1", "id", { primary: true })],
+      },
     ],
   });
   assert.equal(out.length, 2);
   assert.deepEqual(out[0].operation, {
     op: "add_field",
     table: "a",
-    field: { name: "id", type: "INTEGER", primary: true, notNull: true, increment: true },
+    field: {
+      name: "id",
+      type: "INTEGER",
+      primary: true,
+      notNull: true,
+      increment: true,
+    },
   });
   assert.deepEqual(out[1].operation, {
     op: "update_field",
@@ -44,7 +55,12 @@ test("suggests an index for un-indexed foreign key columns", () => {
   const out = suggestFixes({
     database: "postgresql",
     tables: [
-      { id: "u", name: "users", indices: [], fields: [field("u1", "id", { primary: true })] },
+      {
+        id: "u",
+        name: "users",
+        indices: [],
+        fields: [field("u1", "id", { primary: true })],
+      },
       {
         id: "s",
         name: "subs",
@@ -57,8 +73,22 @@ test("suggests an index for un-indexed foreign key columns", () => {
       },
     ],
     relationships: [
-      { id: "r1", startTableId: "s", startFieldId: "s2", endTableId: "u", endFieldId: "u1", fields: [{ startFieldId: "s2", endFieldId: "u1" }] },
-      { id: "r2", startTableId: "s", startFieldId: "s3", endTableId: "u", endFieldId: "u1", fields: [{ startFieldId: "s3", endFieldId: "u1" }] },
+      {
+        id: "r1",
+        startTableId: "s",
+        startFieldId: "s2",
+        endTableId: "u",
+        endFieldId: "u1",
+        fields: [{ startFieldId: "s2", endFieldId: "u1" }],
+      },
+      {
+        id: "r2",
+        startTableId: "s",
+        startFieldId: "s3",
+        endTableId: "u",
+        endFieldId: "u1",
+        fields: [{ startFieldId: "s3", endFieldId: "u1" }],
+      },
     ],
   });
   assert.equal(out.length, 1, JSON.stringify(out));
@@ -79,7 +109,10 @@ test("flags ENUM fields without values as needing input", () => {
         id: "t",
         name: "t",
         indices: [],
-        fields: [field("1", "id", { primary: true }), field("2", "kind", { type: "ENUM", values: [] })],
+        fields: [
+          field("1", "id", { primary: true }),
+          field("2", "kind", { type: "ENUM", values: [] }),
+        ],
       },
     ],
   });

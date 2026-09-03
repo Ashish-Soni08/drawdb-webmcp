@@ -98,7 +98,12 @@ function extractForeignKeys(ast) {
  * the canvas, so "CREATE TABLE payments (... REFERENCES invoices(id))" works
  * against a diagram that already has `invoices`.
  */
-function resolveExternalReferences(ast, importedTables, existingTables, relationships) {
+function resolveExternalReferences(
+  ast,
+  importedTables,
+  existingTables,
+  relationships,
+) {
   const added = [];
   const importedNames = new Set(importedTables.map((t) => t.name));
   for (const fk of extractForeignKeys(ast)) {
@@ -117,12 +122,16 @@ function resolveExternalReferences(ast, importedTables, existingTables, relation
     if (pairs.length === 0 || pairs.length !== fk.startFields.length) continue;
     if (
       relationships.some(
-        (r) => r.startTableId === startTable.id && r.startFieldId === pairs[0].startFieldId,
+        (r) =>
+          r.startTableId === startTable.id &&
+          r.startFieldId === pairs[0].startFieldId,
       )
     ) {
       continue;
     }
-    const startField = startTable.fields.find((f) => f.id === pairs[0].startFieldId);
+    const startField = startTable.fields.find(
+      (f) => f.id === pairs[0].startFieldId,
+    );
     added.push({
       id: nanoid(),
       name: `fk_${startTable.name}_${startField.name}_${endTable.name}`,
@@ -152,7 +161,8 @@ function resolveExternalReferences(ast, importedTables, existingTables, relation
  */
 export function planSqlImport(input, diagram, layout) {
   const sql = typeof input?.sql === "string" ? input.sql.trim() : "";
-  if (!sql) return { ok: false, message: '"sql" must be a non-empty string of DDL.' };
+  if (!sql)
+    return { ok: false, message: '"sql" must be a non-empty string of DDL.' };
   if (sql.length > IMPORT_LIMITS.sqlBytes) {
     return {
       ok: false,
@@ -191,12 +201,20 @@ export function planSqlImport(input, diagram, layout) {
   const relationships = imported.relationships ?? [];
   if (dialect !== DB.ORACLESQL) {
     relationships.push(
-      ...resolveExternalReferences(ast, tables, diagram.tables ?? [], relationships),
+      ...resolveExternalReferences(
+        ast,
+        tables,
+        diagram.tables ?? [],
+        relationships,
+      ),
     );
   }
   const enums = imported.enums ?? [];
   if (tables.length === 0 && enums.length === 0) {
-    return { ok: false, message: "No CREATE TABLE statements were found in the SQL." };
+    return {
+      ok: false,
+      message: "No CREATE TABLE statements were found in the SQL.",
+    };
   }
   if (tables.length > IMPORT_LIMITS.tables) {
     return {
@@ -217,7 +235,9 @@ export function planSqlImport(input, diagram, layout) {
       message: `These tables already exist in the diagram: ${collisions.join(", ")}. Rename them in the SQL or extend them with apply_schema_changes instead.`,
     };
   }
-  const existingEnums = new Set((diagram.enums ?? []).map((e) => e.name.toLowerCase()));
+  const existingEnums = new Set(
+    (diagram.enums ?? []).map((e) => e.name.toLowerCase()),
+  );
   const enumCollisions = enums
     .map((e) => e.name)
     .filter((name) => existingEnums.has(name.toLowerCase()));

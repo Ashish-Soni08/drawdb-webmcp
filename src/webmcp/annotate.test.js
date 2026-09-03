@@ -5,8 +5,22 @@ import { planAnnotations } from "./annotate.js";
 const layout = { tableWidth: 200, pan: { x: 0, y: 0 } };
 const state = {
   tables: [
-    { id: "a", name: "users", x: 100, y: 100, comment: "", fields: [{ name: "id" }, { name: "email" }] },
-    { id: "b", name: "subs", x: 400, y: 100, comment: "", fields: [{ name: "id" }] },
+    {
+      id: "a",
+      name: "users",
+      x: 100,
+      y: 100,
+      comment: "",
+      fields: [{ name: "id" }, { name: "email" }],
+    },
+    {
+      id: "b",
+      name: "subs",
+      x: 400,
+      y: 100,
+      comment: "",
+      fields: [{ name: "id" }],
+    },
   ],
   notes: [{ id: 0 }],
   areas: [],
@@ -16,7 +30,14 @@ test("areas wrap their member tables and notes sit next to a table", () => {
   const r = planAnnotations(
     {
       areas: [{ name: "Billing", tables: ["users", "SUBS"], color: "#ff8800" }],
-      notes: [{ title: "Why", content: "Subscriptions belong to users.", near: "subs" }, { content: "Free note" }],
+      notes: [
+        {
+          title: "Why",
+          content: "Subscriptions belong to users.",
+          near: "subs",
+        },
+        { content: "Free note" },
+      ],
     },
     state,
     layout,
@@ -44,11 +65,27 @@ test("areas wrap their member tables and notes sit next to a table", () => {
 test("rejects empty input, unknown tables, and bad colors", () => {
   assert.equal(planAnnotations({}, state, layout).ok, false);
   const r = planAnnotations(
-    { areas: [{ name: "X", tables: ["ghost"] }, { name: "", tables: ["users"] }], notes: [{ content: "", near: "users" }, { content: "hi", near: "nope" }] },
+    {
+      areas: [
+        { name: "X", tables: ["ghost"] },
+        { name: "", tables: ["users"] },
+      ],
+      notes: [
+        { content: "", near: "users" },
+        { content: "hi", near: "nope" },
+      ],
+    },
     state,
     layout,
   );
   assert.equal(r.ok, false);
   assert.equal(r.errors.length, 4);
-  assert.equal(planAnnotations({ areas: [{ name: "X", tables: ["users"], color: "red" }] }, state, layout).ok, false);
+  assert.equal(
+    planAnnotations(
+      { areas: [{ name: "X", tables: ["users"], color: "red" }] },
+      state,
+      layout,
+    ).ok,
+    false,
+  );
 });

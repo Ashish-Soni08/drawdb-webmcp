@@ -93,7 +93,11 @@ function assert(condition, path, message) {
 }
 
 function checkName(value, path, label) {
-  assert(typeof value === "string" && value.trim() !== "", path, `${label} is required.`);
+  assert(
+    typeof value === "string" && value.trim() !== "",
+    path,
+    `${label} is required.`,
+  );
   assert(
     value.length <= LIMITS.nameLength,
     path,
@@ -109,7 +113,11 @@ function checkName(value, path, label) {
 
 /** Case-insensitive lookup that refuses ambiguous matches instead of guessing. */
 function findByName(items, name, path, label) {
-  assert(typeof name === "string" && name !== "", path, `${label} name is required.`);
+  assert(
+    typeof name === "string" && name !== "",
+    path,
+    `${label} name is required.`,
+  );
   const exact = items.find((item) => item.name === name);
   if (exact) return exact;
   const lower = name.toLowerCase();
@@ -136,16 +144,28 @@ function buildTypeCatalog(database, enums, types) {
   const builtin = dbToTypes[database] || {};
   for (const key of Object.keys(builtin)) catalog.set(key, builtin[key]);
   for (const e of enums ?? []) {
-    if (e?.name) catalog.set(String(e.name).toUpperCase(), { type: e.name, custom: "enum" });
+    if (e?.name)
+      catalog.set(String(e.name).toUpperCase(), {
+        type: e.name,
+        custom: "enum",
+      });
   }
   for (const t of types ?? []) {
-    if (t?.name) catalog.set(String(t.name).toUpperCase(), { type: t.name, custom: "type" });
+    if (t?.name)
+      catalog.set(String(t.name).toUpperCase(), {
+        type: t.name,
+        custom: "type",
+      });
   }
   return catalog;
 }
 
 function resolveType(rawType, catalog, database, path) {
-  assert(typeof rawType === "string" && rawType.trim() !== "", path, "Field type is required.");
+  assert(
+    typeof rawType === "string" && rawType.trim() !== "",
+    path,
+    "Field type is required.",
+  );
   const upper = rawType.trim().toUpperCase();
   let info = catalog.get(upper);
   let resolved = upper;
@@ -198,7 +218,12 @@ function normalizeValues(values, type, path) {
 function buildField(input, ctx, path) {
   assert(isObject(input), path, "Field must be an object.");
   const name = checkName(input.name, `${path}.name`, "Field name");
-  const { type, info } = resolveType(input.type, ctx.catalog, ctx.database, `${path}.type`);
+  const { type, info } = resolveType(
+    input.type,
+    ctx.catalog,
+    ctx.database,
+    `${path}.type`,
+  );
 
   const primary = Boolean(input.primary);
   const increment = Boolean(input.increment);
@@ -258,15 +283,16 @@ function buildIndex(input, table, path) {
   assert(
     Array.isArray(input.fields) && input.fields.length > 0,
     `${path}.fields`,
-    "Index needs a non-empty \"fields\" array of field names.",
+    'Index needs a non-empty "fields" array of field names.',
   );
   assert(
     input.fields.length <= LIMITS.indexFields,
     `${path}.fields`,
     `An index may cover at most ${LIMITS.indexFields} fields.`,
   );
-  const fields = input.fields.map((fieldName, i) =>
-    findByName(table.fields, fieldName, `${path}.fields[${i}]`, "Field").name,
+  const fields = input.fields.map(
+    (fieldName, i) =>
+      findByName(table.fields, fieldName, `${path}.fields[${i}]`, "Field").name,
   );
   return { id: n, name, unique: Boolean(input.unique), fields };
 }
@@ -281,7 +307,7 @@ function applyAddTable(op, ctx, path) {
   assert(
     Array.isArray(op.fields) && op.fields.length > 0,
     `${path}.fields`,
-    "A new table needs a non-empty \"fields\" array.",
+    'A new table needs a non-empty "fields" array.',
   );
   assert(
     op.fields.length <= LIMITS.fieldsPerTable,
@@ -303,7 +329,11 @@ function applyAddTable(op, ctx, path) {
     collapsed: false,
   };
   if (op.color !== undefined) {
-    assert(COLOR_RE.test(op.color), `${path}.color`, "Color must be a #rrggbb hex value.");
+    assert(
+      COLOR_RE.test(op.color),
+      `${path}.color`,
+      "Color must be a #rrggbb hex value.",
+    );
     table.color = op.color;
   }
 
@@ -351,16 +381,32 @@ function applyAddIndex(op, ctx, path) {
 }
 
 function resolveEndpoint(endpoint, ctx, path) {
-  assert(isObject(endpoint), path, 'Expected an object like { "table": "...", "field": "..." }.');
-  const table = findByName(ctx.tables, endpoint.table, `${path}.table`, "Table");
-  const field = findByName(table.fields, endpoint.field, `${path}.field`, "Field");
+  assert(
+    isObject(endpoint),
+    path,
+    'Expected an object like { "table": "...", "field": "..." }.',
+  );
+  const table = findByName(
+    ctx.tables,
+    endpoint.table,
+    `${path}.table`,
+    "Table",
+  );
+  const field = findByName(
+    table.fields,
+    endpoint.field,
+    `${path}.field`,
+    "Field",
+  );
   return { table, field };
 }
 
 function typesCompatible(database, typeA, typeB) {
   if (typeA === typeB) return true;
   const info = (dbToTypes[database] || {})[typeA];
-  return Boolean(info && info.compatibleWith && info.compatibleWith.includes(typeB));
+  return Boolean(
+    info && info.compatibleWith && info.compatibleWith.includes(typeB),
+  );
 }
 
 function inferCardinality(startField, endField) {
@@ -460,15 +506,27 @@ function applyUpdateTable(op, ctx, path) {
   );
   if (op.set.name !== undefined) {
     const name = checkName(op.set.name, `${path}.set.name`, "Table name");
-    assert(!hasName(ctx.tables, name, table.id), `${path}.set.name`, `Table "${name}" already exists.`);
+    assert(
+      !hasName(ctx.tables, name, table.id),
+      `${path}.set.name`,
+      `Table "${name}" already exists.`,
+    );
     table.name = name;
   }
   if (op.set.comment !== undefined) {
-    assert(typeof op.set.comment === "string", `${path}.set.comment`, "Comment must be a string.");
+    assert(
+      typeof op.set.comment === "string",
+      `${path}.set.comment`,
+      "Comment must be a string.",
+    );
     table.comment = op.set.comment;
   }
   if (op.set.color !== undefined) {
-    assert(COLOR_RE.test(op.set.color), `${path}.set.color`, "Color must be a #rrggbb hex value.");
+    assert(
+      COLOR_RE.test(op.set.color),
+      `${path}.set.color`,
+      "Color must be a #rrggbb hex value.",
+    );
     table.color = op.set.color;
   }
   ctx.summary.updatedTables.push(table.name);
@@ -530,7 +588,9 @@ function applyUpdateField(op, ctx, path) {
   if (previousName !== field.name) {
     // Indexes reference fields by name; keep them consistent after a rename.
     for (const index of table.indices) {
-      index.fields = index.fields.map((n) => (n === previousName ? field.name : n));
+      index.fields = index.fields.map((n) =>
+        n === previousName ? field.name : n,
+      );
     }
     for (const uc of table.uniqueConstraints ?? []) {
       uc.fields = uc.fields.map((n) => (n === previousName ? field.name : n));
@@ -605,13 +665,22 @@ function emptySummary() {
 /** One-line, human-readable description of a summary (used for undo history). */
 export function summarizeChanges(summary) {
   const parts = [];
-  if (summary.tables.length) parts.push(`added ${summary.tables.length} table(s): ${summary.tables.join(", ")}`);
-  if (summary.fields.length) parts.push(`added ${summary.fields.length} field(s)`);
-  if (summary.indexes.length) parts.push(`added ${summary.indexes.length} index(es)`);
-  if (summary.relationships.length) parts.push(`added ${summary.relationships.length} relationship(s)`);
-  if (summary.updatedTables.length) parts.push(`updated table(s): ${summary.updatedTables.join(", ")}`);
-  if (summary.updatedFields.length) parts.push(`updated ${summary.updatedFields.length} field(s)`);
-  if (summary.enums?.length) parts.push(`added ${summary.enums.length} enum(s)`);
+  if (summary.tables.length)
+    parts.push(
+      `added ${summary.tables.length} table(s): ${summary.tables.join(", ")}`,
+    );
+  if (summary.fields.length)
+    parts.push(`added ${summary.fields.length} field(s)`);
+  if (summary.indexes.length)
+    parts.push(`added ${summary.indexes.length} index(es)`);
+  if (summary.relationships.length)
+    parts.push(`added ${summary.relationships.length} relationship(s)`);
+  if (summary.updatedTables.length)
+    parts.push(`updated table(s): ${summary.updatedTables.join(", ")}`);
+  if (summary.updatedFields.length)
+    parts.push(`updated ${summary.updatedFields.length} field(s)`);
+  if (summary.enums?.length)
+    parts.push(`added ${summary.enums.length} enum(s)`);
   return parts.length ? parts.join("; ") : "no changes";
 }
 
@@ -628,13 +697,25 @@ export function planSchemaChanges(request, diagram, layout) {
   if (!isObject(request) || !Array.isArray(request.operations)) {
     return {
       ok: false,
-      errors: [{ operation: null, path: "operations", message: 'Expected { "operations": [...] }.' }],
+      errors: [
+        {
+          operation: null,
+          path: "operations",
+          message: 'Expected { "operations": [...] }.',
+        },
+      ],
     };
   }
   if (request.operations.length === 0) {
     return {
       ok: false,
-      errors: [{ operation: null, path: "operations", message: "At least one operation is required." }],
+      errors: [
+        {
+          operation: null,
+          path: "operations",
+          message: "At least one operation is required.",
+        },
+      ],
     };
   }
   if (request.operations.length > LIMITS.operations) {

@@ -26,8 +26,31 @@ function baseDiagram() {
         indices: [],
         uniqueConstraints: [],
         fields: [
-          { id: "f_users_id", name: "id", type: "INTEGER", default: "", check: "", primary: true, unique: false, notNull: true, increment: true, comment: "" },
-          { id: "f_users_email", name: "email", type: "VARCHAR", size: 255, default: "", check: "", primary: false, unique: true, notNull: true, increment: false, comment: "" },
+          {
+            id: "f_users_id",
+            name: "id",
+            type: "INTEGER",
+            default: "",
+            check: "",
+            primary: true,
+            unique: false,
+            notNull: true,
+            increment: true,
+            comment: "",
+          },
+          {
+            id: "f_users_email",
+            name: "email",
+            type: "VARCHAR",
+            size: 255,
+            default: "",
+            check: "",
+            primary: false,
+            unique: true,
+            notNull: true,
+            increment: false,
+            comment: "",
+          },
         ],
       },
     ],
@@ -37,7 +60,13 @@ function baseDiagram() {
 test("rejects malformed requests without touching input", () => {
   const diagram = baseDiagram();
   const snapshot = JSON.stringify(diagram);
-  for (const bad of [undefined, null, {}, { operations: "x" }, { operations: [] }]) {
+  for (const bad of [
+    undefined,
+    null,
+    {},
+    { operations: "x" },
+    { operations: [] },
+  ]) {
     const result = planSchemaChanges(bad, diagram, layout);
     assert.equal(result.ok, false);
     assert.ok(result.errors.length >= 1);
@@ -81,8 +110,16 @@ test("adds related tables, fields, indexes and relationships in one request", ()
             { name: "status", type: "VARCHAR" },
           ],
         },
-        { op: "add_field", table: "users", field: { name: "created_at", type: "TIMESTAMP" } },
-        { op: "add_index", table: "subscriptions", index: { fields: ["user_id", "plan_id"] } },
+        {
+          op: "add_field",
+          table: "users",
+          field: { name: "created_at", type: "TIMESTAMP" },
+        },
+        {
+          op: "add_index",
+          table: "subscriptions",
+          index: { fields: ["user_id", "plan_id"] },
+        },
         {
           op: "add_relationship",
           from: { table: "subscriptions", field: "user_id" },
@@ -102,7 +139,10 @@ test("adds related tables, fields, indexes and relationships in one request", ()
 
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   const { tables, relationships } = result.next;
-  assert.deepEqual(tables.map((t) => t.name), ["users", "plans", "subscriptions"]);
+  assert.deepEqual(
+    tables.map((t) => t.name),
+    ["users", "plans", "subscriptions"],
+  );
 
   const plans = tables.find((t) => t.name === "plans");
   assert.equal(plans.fields[1].size, 120);
@@ -113,7 +153,11 @@ test("adds related tables, fields, indexes and relationships in one request", ()
   ]);
 
   const subscriptions = tables.find((t) => t.name === "subscriptions");
-  assert.equal(subscriptions.fields[3].size, 255, "VARCHAR gets the default size");
+  assert.equal(
+    subscriptions.fields[3].size,
+    255,
+    "VARCHAR gets the default size",
+  );
   assert.equal(subscriptions.indices[0].name, "subscriptions_index_0");
 
   const users = tables.find((t) => t.name === "users");
@@ -154,8 +198,16 @@ test("reports every invalid reference and applies nothing", () => {
     {
       operations: [
         { op: "add_field", table: "orders", field: { name: "x", type: "INT" } },
-        { op: "add_field", table: "users", field: { name: "email", type: "INT" } },
-        { op: "add_field", table: "users", field: { name: "flag", type: "NOT_A_TYPE" } },
+        {
+          op: "add_field",
+          table: "users",
+          field: { name: "email", type: "INT" },
+        },
+        {
+          op: "add_field",
+          table: "users",
+          field: { name: "flag", type: "NOT_A_TYPE" },
+        },
         { op: "add_index", table: "users", index: { fields: ["nope"] } },
         {
           op: "add_relationship",
@@ -163,8 +215,16 @@ test("reports every invalid reference and applies nothing", () => {
           to: { table: "users", field: "id" },
         },
         { op: "delete_table", table: "users" },
-        { op: "add_table", name: "1bad", fields: [{ name: "id", type: "INT" }] },
-        { op: "add_table", name: "USERS", fields: [{ name: "id", type: "INT" }] },
+        {
+          op: "add_table",
+          name: "1bad",
+          fields: [{ name: "id", type: "INT" }],
+        },
+        {
+          op: "add_table",
+          name: "USERS",
+          fields: [{ name: "id", type: "INT" }],
+        },
       ],
     },
     baseDiagram(),
@@ -172,7 +232,10 @@ test("reports every invalid reference and applies nothing", () => {
   );
   assert.equal(result.ok, false);
   assert.equal(result.errors.length, 8);
-  assert.deepEqual(result.errors.map((e) => e.operation), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(
+    result.errors.map((e) => e.operation),
+    [0, 1, 2, 3, 4, 5, 6, 7],
+  );
   assert.match(result.errors[0].message, /does not exist/);
   assert.match(result.errors[1].message, /already exists/);
   assert.match(result.errors[2].message, /not available for postgresql/);
@@ -187,7 +250,11 @@ test("rejects ambiguous case-insensitive references instead of guessing", () => 
   const diagram = baseDiagram();
   diagram.tables.push({ ...diagram.tables[0], id: "t_users2", name: "Users" });
   const result = planSchemaChanges(
-    { operations: [{ op: "add_field", table: "USERS", field: { name: "a", type: "INT" } }] },
+    {
+      operations: [
+        { op: "add_field", table: "USERS", field: { name: "a", type: "INT" } },
+      ],
+    },
     diagram,
     layout,
   );
@@ -197,12 +264,26 @@ test("rejects ambiguous case-insensitive references instead of guessing", () => 
 
 test("update_field only allows safe properties and keeps index names in sync", () => {
   const diagram = baseDiagram();
-  diagram.tables[0].indices.push({ id: 0, name: "users_email_idx", unique: true, fields: ["email"] });
+  diagram.tables[0].indices.push({
+    id: 0,
+    name: "users_email_idx",
+    unique: true,
+    fields: ["email"],
+  });
   const ok = planSchemaChanges(
     {
       operations: [
-        { op: "update_field", table: "users", field: "email", set: { name: "email_address", notNull: false } },
-        { op: "update_table", table: "users", set: { comment: "Registered accounts" } },
+        {
+          op: "update_field",
+          table: "users",
+          field: "email",
+          set: { name: "email_address", notNull: false },
+        },
+        {
+          op: "update_table",
+          table: "users",
+          set: { comment: "Registered accounts" },
+        },
       ],
     },
     diagram,
@@ -217,7 +298,16 @@ test("update_field only allows safe properties and keeps index names in sync", (
   assert.equal(users.comment, "Registered accounts");
 
   const bad = planSchemaChanges(
-    { operations: [{ op: "update_field", table: "users", field: "email", set: { id: "x" } }] },
+    {
+      operations: [
+        {
+          op: "update_field",
+          table: "users",
+          field: "email",
+          set: { id: "x" },
+        },
+      ],
+    },
     diagram,
     layout,
   );
@@ -226,11 +316,19 @@ test("update_field only allows safe properties and keeps index names in sync", (
 });
 
 test("enum and generic-database types are validated", () => {
-  const diagram = { ...baseDiagram(), database: "postgresql", enums: [{ name: "status", values: ["a"] }] };
+  const diagram = {
+    ...baseDiagram(),
+    database: "postgresql",
+    enums: [{ name: "status", values: ["a"] }],
+  };
   const ok = planSchemaChanges(
     {
       operations: [
-        { op: "add_field", table: "users", field: { name: "status", type: "status" } },
+        {
+          op: "add_field",
+          table: "users",
+          field: { name: "status", type: "status" },
+        },
         { op: "add_field", table: "users", field: { name: "n", type: "int" } },
       ],
     },
@@ -239,18 +337,34 @@ test("enum and generic-database types are validated", () => {
   );
   assert.equal(ok.ok, true, JSON.stringify(ok.errors));
   assert.equal(ok.next.tables[0].fields[2].type, "STATUS");
-  assert.equal(ok.next.tables[0].fields[3].type, "INTEGER", "INT is aliased to INTEGER on PostgreSQL");
+  assert.equal(
+    ok.next.tables[0].fields[3].type,
+    "INTEGER",
+    "INT is aliased to INTEGER on PostgreSQL",
+  );
 
   const mysql = { ...baseDiagram(), database: "mysql" };
   const withValues = planSchemaChanges(
-    { operations: [{ op: "add_field", table: "users", field: { name: "tags", type: "ENUM", values: ["x", "y"] } }] },
+    {
+      operations: [
+        {
+          op: "add_field",
+          table: "users",
+          field: { name: "tags", type: "ENUM", values: ["x", "y"] },
+        },
+      ],
+    },
     mysql,
     layout,
   );
   assert.equal(withValues.ok, true, JSON.stringify(withValues.errors));
   assert.deepEqual(withValues.next.tables[0].fields[2].values, ["x", "y"]);
   const missingValues = planSchemaChanges(
-    { operations: [{ op: "add_field", table: "users", field: { name: "e", type: "ENUM" } }] },
+    {
+      operations: [
+        { op: "add_field", table: "users", field: { name: "e", type: "ENUM" } },
+      ],
+    },
     mysql,
     layout,
   );
@@ -258,7 +372,11 @@ test("enum and generic-database types are validated", () => {
   assert.match(missingValues.errors[0].message, /values/);
 
   const generic = planSchemaChanges(
-    { operations: [{ op: "add_field", table: "users", field: { name: "n", type: "int" } }] },
+    {
+      operations: [
+        { op: "add_field", table: "users", field: { name: "n", type: "int" } },
+      ],
+    },
     { ...baseDiagram(), database: "generic" },
     layout,
   );
@@ -274,7 +392,10 @@ test("placeNewTables centres the block on the pan point of an empty canvas", () 
   placeNewTables([], fresh, { tableWidth: 200, pan: { x: 40, y: 30 } });
   assert.equal(fresh[0].x, 40 - 100, "single column centred horizontally");
   assert.equal(fresh[1].x, fresh[0].x);
-  assert.ok(fresh[0].y < 30 && fresh[1].y > fresh[0].y, "stacked around the vertical centre");
+  assert.ok(
+    fresh[0].y < 30 && fresh[1].y > fresh[0].y,
+    "stacked around the vertical centre",
+  );
   const mid = (fresh[0].y + fresh[1].y + 93) / 2; // 93 = one-field table height
   assert.ok(Math.abs(mid - 30) <= 1);
 });

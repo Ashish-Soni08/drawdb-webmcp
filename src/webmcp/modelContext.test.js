@@ -30,8 +30,14 @@ test("feature detection prefers document.modelContext over navigator", () => {
   const docCtx = { registerTool() {} };
   const navCtx = { registerTool() {} };
   const hadNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
-  Object.defineProperty(globalThis, "document", { value: { modelContext: docCtx }, configurable: true });
-  Object.defineProperty(globalThis, "navigator", { value: { modelContext: navCtx }, configurable: true });
+  Object.defineProperty(globalThis, "document", {
+    value: { modelContext: docCtx },
+    configurable: true,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    value: { modelContext: navCtx },
+    configurable: true,
+  });
   try {
     assert.equal(getModelContext(), docCtx);
     assert.equal(isWebMCPSupported(), true);
@@ -40,7 +46,8 @@ test("feature detection prefers document.modelContext over navigator", () => {
   } finally {
     delete globalThis.document;
     delete globalThis.navigator;
-    if (hadNavigator) Object.defineProperty(globalThis, "navigator", hadNavigator);
+    if (hadNavigator)
+      Object.defineProperty(globalThis, "navigator", hadNavigator);
   }
 });
 
@@ -62,7 +69,9 @@ test("registerTools stops early when the signal is already aborted", async () =>
   const ctx = fakeModelContext();
   const controller = new AbortController();
   controller.abort();
-  const names = await registerTools(ctx, [{ name: "a" }], { signal: controller.signal });
+  const names = await registerTools(ctx, [{ name: "a" }], {
+    signal: controller.signal,
+  });
   assert.deepEqual(names, []);
   assert.equal(ctx.tools.size, 0);
 });

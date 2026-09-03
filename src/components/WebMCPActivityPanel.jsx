@@ -39,16 +39,22 @@ function ProposalCard({ proposal, onConfirm, onReject, readOnly }) {
         <i className="bi bi-exclamation-triangle-fill" />
         The agent proposes a removal
       </div>
-      {proposal.reason && <div className="mt-1 italic opacity-80">{proposal.reason}</div>}
+      {proposal.reason && (
+        <div className="mt-1 italic opacity-80">{proposal.reason}</div>
+      )}
       <ul className="mt-2 space-y-1 list-disc ps-4">
         {impact.tables.map((t) => (
           <li key={`t-${t.name}`}>
-            Table <b>{t.name}</b> ({t.fieldCount} column{t.fieldCount === 1 ? "" : "s"})
+            Table <b>{t.name}</b> ({t.fieldCount} column
+            {t.fieldCount === 1 ? "" : "s"})
           </li>
         ))}
         {impact.fields.map((f) => (
           <li key={`f-${f.table}.${f.field}`}>
-            Column <b>{f.table}.{f.field}</b>
+            Column{" "}
+            <b>
+              {f.table}.{f.field}
+            </b>
           </li>
         ))}
         {impact.relationships.map((r) => (
@@ -77,7 +83,10 @@ function ProposalCard({ proposal, onConfirm, onReject, readOnly }) {
           Reject
         </Button>
       </div>
-      <div className="mt-2 opacity-60">Only you can confirm this; the agent cannot. Confirmed removals stay undoable.</div>
+      <div className="mt-2 opacity-60">
+        Only you can confirm this; the agent cannot. Confirmed removals stay
+        undoable.
+      </div>
     </div>
   );
 }
@@ -95,8 +104,13 @@ export default function WebMCPActivityPanel({
   const [collapsed, setCollapsed] = useState(false);
   const changes = entries.filter(
     (e) =>
-      ["apply_schema_changes", "import_sql", "arrange_tables", "annotate_diagram", "plan_removal"].includes(e.tool) &&
-      e.ok,
+      [
+        "apply_schema_changes",
+        "import_sql",
+        "arrange_tables",
+        "annotate_diagram",
+        "plan_removal",
+      ].includes(e.tool) && e.ok,
   );
   const expanded = !collapsed || Boolean(proposal);
 
@@ -119,7 +133,9 @@ export default function WebMCPActivityPanel({
               </Tag>
             )}
           </div>
-          <i className={`bi ${expanded ? "bi-chevron-up" : "bi-chevron-down"}`} />
+          <i
+            className={`bi ${expanded ? "bi-chevron-up" : "bi-chevron-down"}`}
+          />
         </div>
 
         {proposal && (

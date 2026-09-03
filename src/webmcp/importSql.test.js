@@ -21,12 +21,25 @@ test("imports PostgreSQL DDL into tables and relationships, appended after exist
     database: "postgresql",
     enums: [],
     relationships: [],
-    tables: [{ id: "t0", name: "users", x: 0, y: 0, fields: [], indices: [], comment: "" }],
+    tables: [
+      {
+        id: "t0",
+        name: "users",
+        x: 0,
+        y: 0,
+        fields: [],
+        indices: [],
+        comment: "",
+      },
+    ],
   };
   const r = planSqlImport({ sql: DDL }, existing, layout);
   assert.equal(r.ok, true, r.message);
   assert.equal(r.dialect, "postgresql");
-  assert.deepEqual(r.next.tables.map((t) => t.name), ["users", "customers", "orders"]);
+  assert.deepEqual(
+    r.next.tables.map((t) => t.name),
+    ["users", "customers", "orders"],
+  );
   assert.equal(r.next.relationships.length, 1);
   const fk = r.next.relationships[0];
   const orders = r.next.tables[2];
@@ -51,7 +64,15 @@ test("links foreign keys to tables that already exist on the canvas", () => {
         y: 0,
         comment: "",
         indices: [],
-        fields: [{ id: "inv_id", name: "id", type: "INTEGER", primary: true, unique: false }],
+        fields: [
+          {
+            id: "inv_id",
+            name: "id",
+            type: "INTEGER",
+            primary: true,
+            unique: false,
+          },
+        ],
       },
     ],
   };
@@ -76,12 +97,16 @@ test("links foreign keys to tables that already exist on the canvas", () => {
     "fk_refunds_invoice_id_invoices",
     "fk_refunds_payment_id_payments",
   ]);
-  const toInvoices = r.next.relationships.find((x) => x.name === "fk_payments_invoice_id_invoices");
+  const toInvoices = r.next.relationships.find(
+    (x) => x.name === "fk_payments_invoice_id_invoices",
+  );
   assert.equal(toInvoices.endTableId, "inv");
   assert.equal(toInvoices.endFieldId, "inv_id");
   assert.equal(toInvoices.deleteConstraint, "Cascade");
   assert.equal(toInvoices.cardinality, "many_to_one");
-  const refundInvoice = r.next.relationships.find((x) => x.name === "fk_refunds_invoice_id_invoices");
+  const refundInvoice = r.next.relationships.find(
+    (x) => x.name === "fk_refunds_invoice_id_invoices",
+  );
   assert.equal(refundInvoice.updateConstraint, "Cascade");
   assert.equal(r.summary.relationships.length, 3);
 });
@@ -91,7 +116,17 @@ test("rejects empty, unparsable, colliding, and wrong-dialect input", () => {
     database: "postgresql",
     enums: [],
     relationships: [],
-    tables: [{ id: "t0", name: "orders", x: 0, y: 0, fields: [], indices: [], comment: "" }],
+    tables: [
+      {
+        id: "t0",
+        name: "orders",
+        x: 0,
+        y: 0,
+        fields: [],
+        indices: [],
+        comment: "",
+      },
+    ],
   };
   assert.equal(planSqlImport({}, diagram, layout).ok, false);
   assert.equal(planSqlImport({ sql: "   " }, diagram, layout).ok, false);
@@ -108,18 +143,30 @@ test("rejects empty, unparsable, colliding, and wrong-dialect input", () => {
   assert.equal(wrong.ok, false);
   assert.match(wrong.message, /targets postgresql/);
 
-  const none = planSqlImport({ sql: "SELECT 1;" }, { ...diagram, tables: [] }, layout);
+  const none = planSqlImport(
+    { sql: "SELECT 1;" },
+    { ...diagram, tables: [] },
+    layout,
+  );
   assert.equal(none.ok, false);
   assert.match(none.message, /No CREATE TABLE/);
 });
 
 test("generic diagrams default to PostgreSQL syntax and accept a dialect", () => {
-  const diagram = { database: "generic", enums: [], relationships: [], tables: [] };
+  const diagram = {
+    database: "generic",
+    enums: [],
+    relationships: [],
+    tables: [],
+  };
   const pg = planSqlImport({ sql: DDL }, diagram, layout);
   assert.equal(pg.ok, true, pg.message);
   assert.equal(pg.dialect, "postgresql");
   const my = planSqlImport(
-    { sql: "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50));", dialect: "mysql" },
+    {
+      sql: "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50));",
+      dialect: "mysql",
+    },
     diagram,
     layout,
   );

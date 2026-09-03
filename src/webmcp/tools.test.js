@@ -27,7 +27,8 @@ function harness(initial = {}) {
     record: (entry) => activity.push(entry),
   });
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
-  const call = async (name, input) => JSON.parse(await byName[name].execute(input));
+  const call = async (name, input) =>
+    JSON.parse(await byName[name].execute(input));
   return { state, applied, activity, tools, call };
 }
 
@@ -36,7 +37,13 @@ test("every call is recorded in the activity trail with a one-line summary", asy
   await call("inspect_schema");
   await call("apply_schema_changes", { operations: "bad" });
   await call("apply_schema_changes", {
-    operations: [{ op: "add_table", name: "t", fields: [{ name: "id", type: "INT", primary: true }] }],
+    operations: [
+      {
+        op: "add_table",
+        name: "t",
+        fields: [{ name: "id", type: "INT", primary: true }],
+      },
+    ],
   });
   await call("validate_schema");
   await call("generate_sql");
@@ -63,15 +70,29 @@ test("validate_schema returns ready-to-apply suggestions that fix the issue", as
   const { call } = harness();
   await call("apply_schema_changes", {
     operations: [
-      { op: "add_table", name: "users", fields: [{ name: "id", type: "INT", primary: true }] },
-      { op: "add_table", name: "orders", fields: [{ name: "user_id", type: "INT" }] },
-      { op: "add_relationship", from: { table: "orders", field: "user_id" }, to: { table: "users", field: "id" } },
+      {
+        op: "add_table",
+        name: "users",
+        fields: [{ name: "id", type: "INT", primary: true }],
+      },
+      {
+        op: "add_table",
+        name: "orders",
+        fields: [{ name: "user_id", type: "INT" }],
+      },
+      {
+        op: "add_relationship",
+        from: { table: "orders", field: "user_id" },
+        to: { table: "users", field: "id" },
+      },
     ],
   });
   let r = await call("validate_schema");
   assert.equal(r.valid, false);
   assert.equal(r.suggestions.length, 2, JSON.stringify(r.suggestions));
-  const fixes = r.suggestions.filter((s) => !s.needsInput).map((s) => s.operation);
+  const fixes = r.suggestions
+    .filter((s) => !s.needsInput)
+    .map((s) => s.operation);
   r = await call("apply_schema_changes", { operations: fixes });
   assert.equal(r.ok, true, JSON.stringify(r));
   r = await call("validate_schema");
@@ -105,7 +126,11 @@ test("exposes the thirteen tools with schemas and annotations", () => {
     assert.equal(typeof tool.execute, "function");
   }
   assert.equal(tools[0].annotations.readOnlyHint, true);
-  assert.equal(tools[1].annotations, undefined, "the mutating tool carries no readOnlyHint");
+  assert.equal(
+    tools[1].annotations,
+    undefined,
+    "the mutating tool carries no readOnlyHint",
+  );
   assert.equal(tools[2].annotations.readOnlyHint, true);
   assert.equal(tools[3].annotations.readOnlyHint, true);
 });
@@ -120,8 +145,16 @@ test("full loop: apply -> inspect -> validate -> fix -> generate_sql", async () 
 
   r = await call("apply_schema_changes", {
     operations: [
-      { op: "add_table", name: "users", fields: [{ name: "id", type: "INT", primary: true }] },
-      { op: "add_table", name: "invoices", fields: [{ name: "user_id", type: "INT" }] },
+      {
+        op: "add_table",
+        name: "users",
+        fields: [{ name: "id", type: "INT", primary: true }],
+      },
+      {
+        op: "add_table",
+        name: "invoices",
+        fields: [{ name: "user_id", type: "INT" }],
+      },
       {
         op: "add_relationship",
         from: { table: "invoices", field: "user_id" },
@@ -136,11 +169,18 @@ test("full loop: apply -> inspect -> validate -> fix -> generate_sql", async () 
 
   r = await call("validate_schema");
   assert.equal(r.valid, false);
-  assert.ok(r.issues.some((i) => /invoices/.test(i) && /primary key/i.test(i)), r.issues);
+  assert.ok(
+    r.issues.some((i) => /invoices/.test(i) && /primary key/i.test(i)),
+    r.issues,
+  );
 
   r = await call("apply_schema_changes", {
     operations: [
-      { op: "add_field", table: "invoices", field: { name: "id", type: "INT", primary: true } },
+      {
+        op: "add_field",
+        table: "invoices",
+        field: { name: "id", type: "INT", primary: true },
+      },
     ],
   });
   assert.equal(r.ok, true);
@@ -163,13 +203,19 @@ test("full loop: apply -> inspect -> validate -> fix -> generate_sql", async () 
 test("refuses mutations in read-only mode and applies nothing", async () => {
   const { call, applied } = harness({ readOnly: true });
   const r = await call("apply_schema_changes", {
-    operations: [{ op: "add_table", name: "t", fields: [{ name: "id", type: "INT" }] }],
+    operations: [
+      { op: "add_table", name: "t", fields: [{ name: "id", type: "INT" }] },
+    ],
   });
   assert.equal(r.ok, false);
   assert.equal(r.error.code, "read_only");
   assert.equal(applied.length, 0);
   const inspect = await call("inspect_schema");
-  assert.equal(inspect.readOnly, true, "read-only state is visible to the agent");
+  assert.equal(
+    inspect.readOnly,
+    true,
+    "read-only state is visible to the agent",
+  );
 });
 
 test("invalid requests and dry runs never reach applyChanges", async () => {
@@ -180,14 +226,18 @@ test("invalid requests and dry runs never reach applyChanges", async () => {
   assert.ok(Array.isArray(r.error.details));
 
   r = await call("apply_schema_changes", {
-    operations: [{ op: "add_field", table: "missing", field: { name: "x", type: "INT" } }],
+    operations: [
+      { op: "add_field", table: "missing", field: { name: "x", type: "INT" } },
+    ],
   });
   assert.equal(r.ok, false);
   assert.match(r.error.details[0].message, /does not exist/);
 
   r = await call("apply_schema_changes", {
     dryRun: true,
-    operations: [{ op: "add_table", name: "t", fields: [{ name: "id", type: "INT" }] }],
+    operations: [
+      { op: "add_table", name: "t", fields: [{ name: "id", type: "INT" }] },
+    ],
   });
   assert.equal(r.ok, true);
   assert.equal(r.dryRun, true);
@@ -200,8 +250,28 @@ test("generic diagrams can target any dialect", async () => {
     database: "generic",
     tables: [
       {
-        id: "t", name: "things", x: 0, y: 0, comment: "", color: "#175e7a", indices: [], uniqueConstraints: [],
-        fields: [{ id: "f", name: "id", type: "INT", default: "", check: "", primary: true, unique: false, notNull: true, increment: true, comment: "" }],
+        id: "t",
+        name: "things",
+        x: 0,
+        y: 0,
+        comment: "",
+        color: "#175e7a",
+        indices: [],
+        uniqueConstraints: [],
+        fields: [
+          {
+            id: "f",
+            name: "id",
+            type: "INT",
+            default: "",
+            check: "",
+            primary: true,
+            unique: false,
+            notNull: true,
+            increment: true,
+            comment: "",
+          },
+        ],
       },
     ],
   });
@@ -244,13 +314,29 @@ test("review_schema, generate_migration and arrange_tables work through the brid
     },
   });
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
-  const call = async (name, input) => JSON.parse(await byName[name].execute(input));
+  const call = async (name, input) =>
+    JSON.parse(await byName[name].execute(input));
 
   await call("apply_schema_changes", {
     operations: [
-      { op: "add_table", name: "users", fields: [{ name: "id", type: "INT", primary: true }] },
-      { op: "add_table", name: "posts", fields: [{ name: "id", type: "INT", primary: true }, { name: "user_id", type: "INT" }] },
-      { op: "add_relationship", from: { table: "posts", field: "user_id" }, to: { table: "users", field: "id" } },
+      {
+        op: "add_table",
+        name: "users",
+        fields: [{ name: "id", type: "INT", primary: true }],
+      },
+      {
+        op: "add_table",
+        name: "posts",
+        fields: [
+          { name: "id", type: "INT", primary: true },
+          { name: "user_id", type: "INT" },
+        ],
+      },
+      {
+        op: "add_relationship",
+        from: { table: "posts", field: "user_id" },
+        to: { table: "users", field: "id" },
+      },
     ],
   });
 
@@ -305,7 +391,13 @@ test("plan_removal never deletes by itself; the bridge owns confirmation", async
       state.relationships = next.relationships;
     },
     proposeRemoval: (plan, reason) => {
-      const p = { id: `rm_${proposals.size + 1}`, status: "pending", reason, impact: plan.impact, next: plan.next };
+      const p = {
+        id: `rm_${proposals.size + 1}`,
+        status: "pending",
+        reason,
+        impact: plan.impact,
+        next: plan.next,
+      };
       proposals.set(p.id, p);
       return p;
     },
@@ -315,17 +407,36 @@ test("plan_removal never deletes by itself; the bridge owns confirmation", async
     },
   });
   const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
-  const call = async (name, input) => JSON.parse(await byName[name].execute(input));
+  const call = async (name, input) =>
+    JSON.parse(await byName[name].execute(input));
 
   await call("apply_schema_changes", {
     operations: [
-      { op: "add_table", name: "users", fields: [{ name: "id", type: "INT", primary: true }] },
-      { op: "add_table", name: "posts", fields: [{ name: "id", type: "INT", primary: true }, { name: "user_id", type: "INT" }] },
-      { op: "add_relationship", from: { table: "posts", field: "user_id" }, to: { table: "users", field: "id" } },
+      {
+        op: "add_table",
+        name: "users",
+        fields: [{ name: "id", type: "INT", primary: true }],
+      },
+      {
+        op: "add_table",
+        name: "posts",
+        fields: [
+          { name: "id", type: "INT", primary: true },
+          { name: "user_id", type: "INT" },
+        ],
+      },
+      {
+        op: "add_relationship",
+        from: { table: "posts", field: "user_id" },
+        to: { table: "users", field: "id" },
+      },
     ],
   });
 
-  let r = await call("plan_removal", { targets: [{ kind: "table", table: "users" }], reason: "legacy" });
+  let r = await call("plan_removal", {
+    targets: [{ kind: "table", table: "users" }],
+    reason: "legacy",
+  });
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.equal(r.status, "pending");
   assert.deepEqual(r.impact.tables, [{ name: "users", fieldCount: 1 }]);
@@ -337,11 +448,16 @@ test("plan_removal never deletes by itself; the bridge owns confirmation", async
   r = await call("removal_status", { proposalId: "nope" });
   assert.equal(r.error.code, "not_found");
 
-  r = await call("plan_removal", { targets: [{ kind: "table", table: "ghost" }] });
+  r = await call("plan_removal", {
+    targets: [{ kind: "table", table: "ghost" }],
+  });
   assert.equal(r.ok, false);
   assert.equal(r.error.code, "invalid_request");
 
-  r = await call("annotate_diagram", { areas: [{ name: "Core", tables: ["users", "posts"] }], notes: [{ content: "hi", near: "posts" }] });
+  r = await call("annotate_diagram", {
+    areas: [{ name: "Core", tables: ["users", "posts"] }],
+    notes: [{ content: "hi", near: "posts" }],
+  });
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.deepEqual(r.annotated, { notes: 1, areas: 1 });
   assert.equal(annotated.areas[0].name, "Core");
@@ -363,7 +479,9 @@ test("plan_removal never deletes by itself; the bridge owns confirmation", async
   assert.equal(r.ok, false);
 
   state.readOnly = true;
-  r = await call("plan_removal", { targets: [{ kind: "table", table: "users" }] });
+  r = await call("plan_removal", {
+    targets: [{ kind: "table", table: "users" }],
+  });
   assert.equal(r.error.code, "read_only");
   r = await call("annotate_diagram", { notes: [{ content: "x" }] });
   assert.equal(r.error.code, "read_only");

@@ -103,10 +103,10 @@ export default function WebMCPBridge() {
 
   const record = useCallback((entry) => {
     setActivity((prev) =>
-      [{ id: `${Date.now()}-${prev.length}`, at: Date.now(), ...entry }, ...prev].slice(
-        0,
-        MAX_ACTIVITY_ENTRIES,
-      ),
+      [
+        { id: `${Date.now()}-${prev.length}`, at: Date.now(), ...entry },
+        ...prev,
+      ].slice(0, MAX_ACTIVITY_ENTRIES),
     );
   }, []);
 
@@ -152,7 +152,10 @@ export default function WebMCPBridge() {
         setProposal(next);
         proposalRef.current = next;
         if (previous && previous.status === "pending") {
-          decidedProposals.set(previous.id, { ...previous, status: "superseded" });
+          decidedProposals.set(previous.id, {
+            ...previous,
+            status: "superseded",
+          });
         }
         return next;
       },
@@ -165,7 +168,10 @@ export default function WebMCPBridge() {
         const s = stateRef.current;
         // drawDB's own undo entries for notes/areas: each ADD pops the last one.
         if (plan.areas.length) {
-          s.setAreas((prev) => [...prev, ...plan.areas.map((a, i) => ({ ...a, id: prev.length + i }))]);
+          s.setAreas((prev) => [
+            ...prev,
+            ...plan.areas.map((a, i) => ({ ...a, id: prev.length + i })),
+          ]);
           s.setUndoStack((prev) => [
             ...prev,
             ...plan.areas.map((a) => ({
@@ -177,7 +183,10 @@ export default function WebMCPBridge() {
           ]);
         }
         if (plan.notes.length) {
-          s.setNotes((prev) => [...prev, ...plan.notes.map((n, i) => ({ ...n, id: prev.length + i }))]);
+          s.setNotes((prev) => [
+            ...prev,
+            ...plan.notes.map((n, i) => ({ ...n, id: prev.length + i })),
+          ]);
           s.setUndoStack((prev) => [
             ...prev,
             ...plan.notes.map((n) => ({
@@ -249,7 +258,8 @@ export default function WebMCPBridge() {
         }
         if (elements.length === 0) return 0;
         // Same bulk-move entry the editor's own Auto-arrange action pushes.
-        for (const element of elements) s.diagram.updateTable(element.id, element.redo);
+        for (const element of elements)
+          s.diagram.updateTable(element.id, element.redo);
         s.setUndoStack((prev) => [
           ...prev,
           {
@@ -261,9 +271,26 @@ export default function WebMCPBridge() {
           },
         ]);
         s.setRedoStack([]);
-        const arranged = tables.map((t) => ({ ...t, ...(byId.get(t.id) ?? {}) }));
-        revealChanges(arranged, { tables: arranged.map((t) => t.name), fields: [], indexes: [], updatedTables: [], updatedFields: [] }, s, false);
-        Toast.info({ content: `SchemaPair agent: arranged ${elements.length} table(s)`, duration: 4 });
+        const arranged = tables.map((t) => ({
+          ...t,
+          ...(byId.get(t.id) ?? {}),
+        }));
+        revealChanges(
+          arranged,
+          {
+            tables: arranged.map((t) => t.name),
+            fields: [],
+            indexes: [],
+            updatedTables: [],
+            updatedFields: [],
+          },
+          s,
+          false,
+        );
+        Toast.info({
+          content: `SchemaPair agent: arranged ${elements.length} table(s)`,
+          duration: 4,
+        });
         return elements.length;
       },
       record,
@@ -274,7 +301,9 @@ export default function WebMCPBridge() {
     })
       .then((names) => {
         if (!controller.signal.aborted) {
-          console.info(`[SchemaPair] WebMCP tools registered: ${names.join(", ")}`);
+          console.info(
+            `[SchemaPair] WebMCP tools registered: ${names.join(", ")}`,
+          );
         }
       })
       .catch((error) => {
@@ -290,7 +319,9 @@ export default function WebMCPBridge() {
   }, [record]);
 
   const latest = undoStack[undoStack.length - 1];
-  const canUndoLatest = Boolean(latest && latest.source === AGENT_UNDO_TAG && !layout.readOnly);
+  const canUndoLatest = Boolean(
+    latest && latest.source === AGENT_UNDO_TAG && !layout.readOnly,
+  );
 
   const undoLatest = () => {
     const s = stateRef.current;
@@ -312,7 +343,8 @@ export default function WebMCPBridge() {
     }
     if (entry.bulk) {
       // arrange_tables: restore the previous positions.
-      for (const element of entry.elements) s.diagram.updateTable(element.id, element.undo);
+      for (const element of entry.elements)
+        s.diagram.updateTable(element.id, element.undo);
       s.setUndoStack((prev) => prev.slice(0, -1));
       s.setRedoStack((prev) => [...prev, entry]);
       record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
@@ -335,7 +367,10 @@ export default function WebMCPBridge() {
       setEnums: s.setEnums,
     });
     s.setUndoStack((prev) => prev.slice(0, -1));
-    s.setRedoStack((prev) => [...prev, { ...entry, data: { snapshot: current } }]);
+    s.setRedoStack((prev) => [
+      ...prev,
+      { ...entry, data: { snapshot: current } },
+    ]);
     record({ tool: "undo", ok: true, summary: `Reverted: ${entry.message}` });
   };
 
@@ -421,7 +456,8 @@ function revealChanges(tables, summary, s, select = true) {
   }));
 
   if (!select) return;
-  const first = tables.find((t) => summary.tables.includes(t.name)) ?? targets[0];
+  const first =
+    tables.find((t) => summary.tables.includes(t.name)) ?? targets[0];
   s.setSelectedElement((prev) => ({
     ...prev,
     element: ObjectType.TABLE,

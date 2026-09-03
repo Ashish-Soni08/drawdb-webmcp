@@ -46,7 +46,9 @@ export function snapshotSchema(state) {
  *         | {ok:false, message:string}}
  */
 export function buildMigration(from, to, database, requestedDialect) {
-  let dialect = requestedDialect ? String(requestedDialect).toLowerCase() : undefined;
+  let dialect = requestedDialect
+    ? String(requestedDialect).toLowerCase()
+    : undefined;
   if (dialect && !SQL_DIALECTS.includes(dialect)) {
     return {
       ok: false,

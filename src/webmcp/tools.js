@@ -3,7 +3,12 @@ import { suggestFixes } from "./suggestFixes";
 import { IMPORT_LIMITS, planSqlImport } from "./importSql";
 import { reviewSchema } from "./reviewSchema";
 import { buildMigration, snapshotSchema } from "./migration";
-import { planRemoval, REMOVAL_KINDS, REMOVAL_LIMITS, summarizeRemoval } from "./planRemoval";
+import {
+  planRemoval,
+  REMOVAL_KINDS,
+  REMOVAL_LIMITS,
+  summarizeRemoval,
+} from "./planRemoval";
 import { ANNOTATE_LIMITS, planAnnotations } from "./annotate";
 import { generateSampleInserts, SAMPLE_LIMITS } from "./sampleData";
 import { explainJoinPath } from "./joinPath";
@@ -36,11 +41,17 @@ const fieldSchema = {
   properties: {
     name: { type: "string" },
     type: { type: "string" },
-    size: { type: "number", description: "Length/precision for sized types such as VARCHAR." },
+    size: {
+      type: "number",
+      description: "Length/precision for sized types such as VARCHAR.",
+    },
     primary: { type: "boolean" },
     notNull: { type: "boolean" },
     unique: { type: "boolean" },
-    increment: { type: "boolean", description: "Auto-increment (integer types only)." },
+    increment: {
+      type: "boolean",
+      description: "Auto-increment (integer types only).",
+    },
     default: { type: "string" },
     comment: { type: "string" },
     values: {
@@ -142,11 +153,20 @@ function describeResult(raw) {
   } catch {
     return { ok: true, summary: "completed" };
   }
-  if (!parsed.ok) return { ok: false, summary: parsed.error?.message ?? "failed" };
-  if (parsed.applied) return { ok: true, summary: summarizeChanges(parsed.applied) };
-  if (parsed.imported) return { ok: true, summary: `imported ${summarizeChanges(parsed.imported)}` };
+  if (!parsed.ok)
+    return { ok: false, summary: parsed.error?.message ?? "failed" };
+  if (parsed.applied)
+    return { ok: true, summary: summarizeChanges(parsed.applied) };
+  if (parsed.imported)
+    return {
+      ok: true,
+      summary: `imported ${summarizeChanges(parsed.imported)}`,
+    };
   if (parsed.dryRun) {
-    return { ok: true, summary: `dry run: ${summarizeChanges(parsed.wouldApply ?? parsed.wouldImport)}` };
+    return {
+      ok: true,
+      summary: `dry run: ${summarizeChanges(parsed.wouldApply ?? parsed.wouldImport)}`,
+    };
   }
   if (parsed.counts) {
     return {
@@ -163,10 +183,18 @@ function describeResult(raw) {
     };
   }
   if (parsed.tableOrder) {
-    return { ok: true, summary: `generated sample inserts for ${parsed.tableOrder.length} table(s)` };
+    return {
+      ok: true,
+      summary: `generated sample inserts for ${parsed.tableOrder.length} table(s)`,
+    };
   }
   if (parsed.hops) {
-    return { ok: true, summary: parsed.connected ? `join path with ${parsed.hops.length} hop(s)` : "no join path" };
+    return {
+      ok: true,
+      summary: parsed.connected
+        ? `join path with ${parsed.hops.length} hop(s)`
+        : "no join path",
+    };
   }
   if (parsed.sql !== undefined) {
     return {
@@ -191,13 +219,19 @@ function describeResult(raw) {
     return { ok: true, summary: `arranged ${parsed.movedTables} table(s)` };
   }
   if (parsed.proposalId && parsed.impact) {
-    return { ok: true, summary: `proposed: ${summarizeRemoval(parsed.impact)} (awaiting your confirmation)` };
+    return {
+      ok: true,
+      summary: `proposed: ${summarizeRemoval(parsed.impact)} (awaiting your confirmation)`,
+    };
   }
   if (parsed.status && parsed.proposalId) {
     return { ok: true, summary: `removal proposal is ${parsed.status}` };
   }
   if (parsed.annotated) {
-    return { ok: true, summary: `added ${parsed.annotated.notes} note(s), ${parsed.annotated.areas} area(s)` };
+    return {
+      ok: true,
+      summary: `added ${parsed.annotated.notes} note(s), ${parsed.annotated.areas} area(s)`,
+    };
   }
   return { ok: true, summary: "completed" };
 }
@@ -320,7 +354,10 @@ export function createSchemaPairTools(bridge) {
     inputSchema: {
       type: "object",
       properties: {
-        sql: { type: "string", description: "DDL text, e.g. CREATE TABLE ... statements." },
+        sql: {
+          type: "string",
+          description: "DDL text, e.g. CREATE TABLE ... statements.",
+        },
         dialect: { type: "string", enum: [...SQL_DIALECTS] },
         dryRun: { type: "boolean" },
       },
@@ -329,7 +366,10 @@ export function createSchemaPairTools(bridge) {
     execute: guard(bridge, "import_sql", async (input) => {
       const state = bridge.getState();
       if (state.readOnly) {
-        return toolFailure("read_only", "The editor is in read-only mode; imports are not allowed.");
+        return toolFailure(
+          "read_only",
+          "The editor is in read-only mode; imports are not allowed.",
+        );
       }
       const plan = planSqlImport(input, state, {
         tableWidth: state.tableWidth,
@@ -337,7 +377,11 @@ export function createSchemaPairTools(bridge) {
       });
       if (!plan.ok) return toolFailure("invalid_request", plan.message);
       if (input.dryRun) {
-        return toolSuccess({ dryRun: true, wouldImport: plan.summary, warnings: plan.warnings });
+        return toolSuccess({
+          dryRun: true,
+          wouldImport: plan.summary,
+          warnings: plan.warnings,
+        });
       }
       bridge.applyChanges(plan.next, plan.summary);
       return toolSuccess({
@@ -395,7 +439,8 @@ export function createSchemaPairTools(bridge) {
         dialect: { type: "string", enum: [...SQL_DIALECTS] },
         resetBaseline: {
           type: "boolean",
-          description: "After generating, make the current diagram the new baseline.",
+          description:
+            "After generating, make the current diagram the new baseline.",
         },
       },
     },
@@ -404,7 +449,12 @@ export function createSchemaPairTools(bridge) {
       const state = bridge.getState();
       const current = snapshotSchema(state);
       const baseline = bridge.getBaseline?.() ?? snapshotSchema({});
-      const result = buildMigration(baseline, current, state.database, input.dialect);
+      const result = buildMigration(
+        baseline,
+        current,
+        state.database,
+        input.dialect,
+      );
       if (!result.ok) return toolFailure("invalid_request", result.message);
       if (input.resetBaseline) bridge.setBaseline?.(current);
       return toolSuccess({
@@ -449,26 +499,47 @@ export function createSchemaPairTools(bridge) {
             type: "object",
             properties: {
               kind: { type: "string", enum: [...REMOVAL_KINDS] },
-              table: { type: "string", description: "For table, field, index." },
+              table: {
+                type: "string",
+                description: "For table, field, index.",
+              },
               field: { type: "string", description: "For field." },
-              name: { type: "string", description: "Relationship or index name." },
+              name: {
+                type: "string",
+                description: "Relationship or index name.",
+              },
             },
             required: ["kind"],
           },
         },
-        reason: { type: "string", description: "Shown to the user on the confirmation card." },
+        reason: {
+          type: "string",
+          description: "Shown to the user on the confirmation card.",
+        },
       },
       required: ["targets"],
     },
     execute: guard(bridge, "plan_removal", async (input) => {
       const state = bridge.getState();
-      if (state.readOnly) return toolFailure("read_only", "The editor is in read-only mode.");
+      if (state.readOnly)
+        return toolFailure("read_only", "The editor is in read-only mode.");
       const plan = planRemoval(input, state);
       if (!plan.ok) {
-        return toolFailure("invalid_request", "No proposal was created. Fix the listed problems and retry.", plan.errors);
+        return toolFailure(
+          "invalid_request",
+          "No proposal was created. Fix the listed problems and retry.",
+          plan.errors,
+        );
       }
-      const proposal = bridge.proposeRemoval?.(plan, typeof input.reason === "string" ? input.reason : "");
-      if (!proposal) return toolFailure("unavailable", "Removal proposals are not available here.");
+      const proposal = bridge.proposeRemoval?.(
+        plan,
+        typeof input.reason === "string" ? input.reason : "",
+      );
+      if (!proposal)
+        return toolFailure(
+          "unavailable",
+          "Removal proposals are not available here.",
+        );
       return toolSuccess({
         proposalId: proposal.id,
         status: "pending",
@@ -480,7 +551,8 @@ export function createSchemaPairTools(bridge) {
 
   const removalStatusTool = {
     name: "removal_status",
-    description: "Check whether a removal proposal from plan_removal is pending, confirmed, rejected, or superseded.",
+    description:
+      "Check whether a removal proposal from plan_removal is pending, confirmed, rejected, or superseded.",
     inputSchema: {
       type: "object",
       properties: { proposalId: { type: "string" } },
@@ -489,8 +561,13 @@ export function createSchemaPairTools(bridge) {
     annotations: { readOnlyHint: true },
     execute: guard(bridge, "removal_status", async (input) => {
       const proposal = bridge.getProposal?.(input.proposalId);
-      if (!proposal) return toolFailure("not_found", `No proposal "${input.proposalId}".`);
-      return toolSuccess({ proposalId: proposal.id, status: proposal.status, impact: proposal.impact });
+      if (!proposal)
+        return toolFailure("not_found", `No proposal "${input.proposalId}".`);
+      return toolSuccess({
+        proposalId: proposal.id,
+        status: proposal.status,
+        impact: proposal.impact,
+      });
     }),
   };
 
@@ -507,7 +584,10 @@ export function createSchemaPairTools(bridge) {
             properties: {
               content: { type: "string" },
               title: { type: "string" },
-              near: { type: "string", description: "Place next to this table." },
+              near: {
+                type: "string",
+                description: "Place next to this table.",
+              },
               color: { type: "string", description: "#rrggbb" },
             },
             required: ["content"],
@@ -529,9 +609,18 @@ export function createSchemaPairTools(bridge) {
     },
     execute: guard(bridge, "annotate_diagram", async (input) => {
       const state = bridge.getState();
-      if (state.readOnly) return toolFailure("read_only", "The editor is in read-only mode.");
-      const plan = planAnnotations(input, state, { tableWidth: state.tableWidth, pan: state.pan });
-      if (!plan.ok) return toolFailure("invalid_request", "Nothing was added.", plan.errors);
+      if (state.readOnly)
+        return toolFailure("read_only", "The editor is in read-only mode.");
+      const plan = planAnnotations(input, state, {
+        tableWidth: state.tableWidth,
+        pan: state.pan,
+      });
+      if (!plan.ok)
+        return toolFailure(
+          "invalid_request",
+          "Nothing was added.",
+          plan.errors,
+        );
       bridge.addAnnotations?.(plan);
       return toolSuccess({
         annotated: { notes: plan.notes.length, areas: plan.areas.length },
@@ -561,7 +650,8 @@ export function createSchemaPairTools(bridge) {
 
   const joinPathTool = {
     name: "explain_join_path",
-    description: "Explain how two tables connect: the shortest chain of foreign keys between them and a SELECT ... JOIN skeleton that follows it. Read-only.",
+    description:
+      "Explain how two tables connect: the shortest chain of foreign keys between them and a SELECT ... JOIN skeleton that follows it. Read-only.",
     inputSchema: {
       type: "object",
       properties: { from: { type: "string" }, to: { type: "string" } },

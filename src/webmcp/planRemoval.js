@@ -10,17 +10,27 @@ import { getRelationshipFields } from "../utils/utils";
  */
 
 export const REMOVAL_LIMITS = Object.freeze({ targets: 10 });
-export const REMOVAL_KINDS = Object.freeze(["table", "field", "relationship", "index"]);
+export const REMOVAL_KINDS = Object.freeze([
+  "table",
+  "field",
+  "relationship",
+  "index",
+]);
 
-const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isObject = (v) =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
 function findByName(items, name, label) {
-  if (typeof name !== "string" || name === "") throw new Error(`${label} name is required.`);
+  if (typeof name !== "string" || name === "")
+    throw new Error(`${label} name is required.`);
   const exact = items.find((i) => i.name === name);
   if (exact) return exact;
-  const matches = items.filter((i) => i.name.toLowerCase() === name.toLowerCase());
-  if (matches.length === 0) throw new Error(`${label} "${name}" does not exist.`);
+  const matches = items.filter(
+    (i) => i.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (matches.length === 0)
+    throw new Error(`${label} "${name}" does not exist.`);
   if (matches.length > 1) throw new Error(`${label} "${name}" is ambiguous.`);
   return matches[0];
 }
@@ -32,11 +42,32 @@ function findByName(items, name, label) {
  *         | {ok:false, errors:Array<{target:number|null, message:string}>}}
  */
 export function planRemoval(request, diagram) {
-  if (!isObject(request) || !Array.isArray(request.targets) || request.targets.length === 0) {
-    return { ok: false, errors: [{ target: null, message: 'Expected { "targets": [ { "kind": "table" | "field" | "relationship" | "index", ... } ] }.' }] };
+  if (
+    !isObject(request) ||
+    !Array.isArray(request.targets) ||
+    request.targets.length === 0
+  ) {
+    return {
+      ok: false,
+      errors: [
+        {
+          target: null,
+          message:
+            'Expected { "targets": [ { "kind": "table" | "field" | "relationship" | "index", ... } ] }.',
+        },
+      ],
+    };
   }
   if (request.targets.length > REMOVAL_LIMITS.targets) {
-    return { ok: false, errors: [{ target: null, message: `At most ${REMOVAL_LIMITS.targets} targets per proposal.` }] };
+    return {
+      ok: false,
+      errors: [
+        {
+          target: null,
+          message: `At most ${REMOVAL_LIMITS.targets} targets per proposal.`,
+        },
+      ],
+    };
   }
 
   const tables = clone(diagram.tables ?? []);
@@ -52,7 +83,9 @@ export function planRemoval(request, diagram) {
   request.targets.forEach((t, i) => {
     try {
       if (!isObject(t) || !REMOVAL_KINDS.includes(t.kind)) {
-        throw new Error(`Unknown target kind "${t?.kind}". Use: ${REMOVAL_KINDS.join(", ")}.`);
+        throw new Error(
+          `Unknown target kind "${t?.kind}". Use: ${REMOVAL_KINDS.join(", ")}.`,
+        );
       }
       if (t.kind === "table") {
         const table = findByName(tables, t.table, "Table");
@@ -89,7 +122,11 @@ export function planRemoval(request, diagram) {
       removeRelationshipIds.has(r.id) ||
       removeTableIds.has(r.startTableId) ||
       removeTableIds.has(r.endTableId) ||
-      pairs.some((p) => removeFieldIds.has(p.startFieldId) || removeFieldIds.has(p.endFieldId));
+      pairs.some(
+        (p) =>
+          removeFieldIds.has(p.startFieldId) ||
+          removeFieldIds.has(p.endFieldId),
+      );
     if (touchesRemoved) {
       impact.relationships.push({
         name: r.name,
@@ -103,7 +140,10 @@ export function planRemoval(request, diagram) {
   const nextTables = tables
     .filter((table) => {
       if (removeTableIds.has(table.id)) {
-        impact.tables.push({ name: table.name, fieldCount: table.fields.length });
+        impact.tables.push({
+          name: table.name,
+          fieldCount: table.fields.length,
+        });
         return false;
       }
       return true;
@@ -122,15 +162,22 @@ export function planRemoval(request, diagram) {
         removeIndexes.filter((x) => x.tableId === table.id).map((x) => x.name),
       );
       const indices = (table.indices ?? [])
-        .map((index) => ({ ...index, fields: index.fields.filter((n) => !removedNames.has(n)) }))
+        .map((index) => ({
+          ...index,
+          fields: index.fields.filter((n) => !removedNames.has(n)),
+        }))
         .filter((index) => {
           const gone = dropIndex.has(index.name) || index.fields.length === 0;
-          if (gone) impact.indexes.push({ table: table.name, index: index.name });
+          if (gone)
+            impact.indexes.push({ table: table.name, index: index.name });
           return !gone;
         })
         .map((index, i) => ({ ...index, id: i }));
       const uniqueConstraints = (table.uniqueConstraints ?? [])
-        .map((uc) => ({ ...uc, fields: uc.fields.filter((n) => !removedNames.has(n)) }))
+        .map((uc) => ({
+          ...uc,
+          fields: uc.fields.filter((n) => !removedNames.has(n)),
+        }))
         .filter((uc) => uc.fields.length > 0)
         .map((uc, i) => ({ ...uc, id: i }));
       return { ...table, fields, indices, uniqueConstraints };
@@ -147,9 +194,13 @@ export function planRemoval(request, diagram) {
 /** Human summary for the confirmation card and the undo history. */
 export function summarizeRemoval(impact) {
   const parts = [];
-  if (impact.tables.length) parts.push(`${impact.tables.length} table(s): ${impact.tables.map((t) => t.name).join(", ")}`);
+  if (impact.tables.length)
+    parts.push(
+      `${impact.tables.length} table(s): ${impact.tables.map((t) => t.name).join(", ")}`,
+    );
   if (impact.fields.length) parts.push(`${impact.fields.length} column(s)`);
-  if (impact.relationships.length) parts.push(`${impact.relationships.length} relationship(s)`);
+  if (impact.relationships.length)
+    parts.push(`${impact.relationships.length} relationship(s)`);
   if (impact.indexes.length) parts.push(`${impact.indexes.length} index(es)`);
   return parts.length ? `remove ${parts.join("; ")}` : "remove nothing";
 }

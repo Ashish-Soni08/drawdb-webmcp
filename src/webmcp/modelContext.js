@@ -24,7 +24,9 @@ export function getModelContext() {
 /** True when a usable `registerTool` exists. Ordinary browsers return false. */
 export function isWebMCPSupported() {
   const modelContext = getModelContext();
-  return Boolean(modelContext) && typeof modelContext.registerTool === "function";
+  return (
+    Boolean(modelContext) && typeof modelContext.registerTool === "function"
+  );
 }
 
 /**

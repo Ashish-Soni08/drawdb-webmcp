@@ -35,9 +35,17 @@ test("produces structured findings with fixes and severity counts", () => {
           id: "s",
           name: "sessions",
           indices: [],
-          fields: [field("s1", "id", { primary: true, notNull: true }), field("s2", "user_id")],
+          fields: [
+            field("s1", "id", { primary: true, notNull: true }),
+            field("s2", "user_id"),
+          ],
         },
-        { id: "l", name: "logs", indices: [], fields: [field("l1", "id", { primary: true, notNull: true })] },
+        {
+          id: "l",
+          name: "logs",
+          indices: [],
+          fields: [field("l1", "id", { primary: true, notNull: true })],
+        },
       ],
       relationships: [
         {
@@ -75,7 +83,9 @@ test("produces structured findings with fixes and severity counts", () => {
     field: "user_id",
     set: { notNull: true },
   });
-  const createdAt = out.findings.find((f) => f.code === "no_created_at" && f.table === "sessions");
+  const createdAt = out.findings.find(
+    (f) => f.code === "no_created_at" && f.table === "sessions",
+  );
   assert.equal(createdAt.fix.field.type, "TIMESTAMP");
   const isolated = out.findings.find((f) => f.code === "isolated_table");
   assert.equal(isolated.table, "logs");

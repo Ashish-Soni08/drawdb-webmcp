@@ -14,10 +14,33 @@ const diagram = {
       y: 2,
       color: "#123456",
       comment: "",
-      indices: [{ id: 0, name: "users_email_idx", unique: true, fields: ["email"] }],
+      indices: [
+        { id: 0, name: "users_email_idx", unique: true, fields: ["email"] },
+      ],
       fields: [
-        { id: "u_id", name: "id", type: "INT", default: "", primary: true, notNull: true, increment: true, unique: false, comment: "" },
-        { id: "u_email", name: "email", type: "VARCHAR", size: 255, default: "", primary: false, notNull: true, increment: false, unique: true, comment: "login" },
+        {
+          id: "u_id",
+          name: "id",
+          type: "INT",
+          default: "",
+          primary: true,
+          notNull: true,
+          increment: true,
+          unique: false,
+          comment: "",
+        },
+        {
+          id: "u_email",
+          name: "email",
+          type: "VARCHAR",
+          size: 255,
+          default: "",
+          primary: false,
+          notNull: true,
+          increment: false,
+          unique: true,
+          comment: "login",
+        },
       ],
     },
     {
@@ -29,8 +52,28 @@ const diagram = {
       comment: "Billing",
       indices: [],
       fields: [
-        { id: "s_id", name: "id", type: "INT", default: "", primary: true, notNull: true, increment: true, unique: false, comment: "" },
-        { id: "s_user", name: "user_id", type: "INT", default: "", primary: false, notNull: true, increment: false, unique: false, comment: "" },
+        {
+          id: "s_id",
+          name: "id",
+          type: "INT",
+          default: "",
+          primary: true,
+          notNull: true,
+          increment: true,
+          unique: false,
+          comment: "",
+        },
+        {
+          id: "s_user",
+          name: "user_id",
+          type: "INT",
+          default: "",
+          primary: false,
+          notNull: true,
+          increment: false,
+          unique: false,
+          comment: "",
+        },
       ],
     },
   ],
@@ -54,13 +97,34 @@ const diagram = {
 test("describes the diagram compactly without visual noise", () => {
   const out = describeSchema(diagram);
   assert.equal(out.database, "postgresql");
-  assert.deepEqual(out.counts, { tables: 2, fields: 4, relationships: 1, enums: 1, types: 0 });
+  assert.deepEqual(out.counts, {
+    tables: 2,
+    fields: 4,
+    relationships: 1,
+    enums: 1,
+    types: 0,
+  });
   assert.deepEqual(out.tables[0], {
     id: "u",
     name: "users",
     fields: [
-      { id: "u_id", name: "id", type: "INT", primary: true, notNull: true, increment: true },
-      { id: "u_email", name: "email", type: "VARCHAR", size: 255, notNull: true, unique: true, comment: "login" },
+      {
+        id: "u_id",
+        name: "id",
+        type: "INT",
+        primary: true,
+        notNull: true,
+        increment: true,
+      },
+      {
+        id: "u_email",
+        name: "email",
+        type: "VARCHAR",
+        size: 255,
+        notNull: true,
+        unique: true,
+        comment: "login",
+      },
     ],
     indexes: [{ name: "users_email_idx", unique: true, fields: ["email"] }],
   });
@@ -75,7 +139,9 @@ test("describes the diagram compactly without visual noise", () => {
     onUpdate: "No action",
     onDelete: "Cascade",
   });
-  assert.deepEqual(out.enums, [{ name: "status", values: ["active", "paused"] }]);
+  assert.deepEqual(out.enums, [
+    { name: "status", values: ["active", "paused"] },
+  ]);
   assert.equal("types" in out, false);
 });
 
@@ -83,6 +149,10 @@ test("filters by table name while keeping global counts", () => {
   const out = describeSchema(diagram, { tables: ["USERS"] });
   assert.equal(out.tables.length, 1);
   assert.equal(out.tables[0].name, "users");
-  assert.equal(out.relationships.length, 1, "relationships touching the table are kept");
+  assert.equal(
+    out.relationships.length,
+    1,
+    "relationships touching the table are kept",
+  );
   assert.equal(out.counts.tables, 2);
 });

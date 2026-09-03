@@ -29,6 +29,44 @@ function findTable(tables, name) {
   );
 }
 
+function overlaps(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+/**
+ * Finds a free spot for a note next to a table: right, below, above, then
+ * left of it, skipping positions that would cover another table or note.
+ * Falls back to the right side when everything is crowded.
+ */
+function placeNoteNear(table, size, tables, plannedNotes, layout) {
+  const tableHeight = getTableHeight(table, layout.tableWidth, false);
+  const candidates = [
+    { x: table.x + layout.tableWidth + NOTE_GAP, y: table.y },
+    { x: table.x, y: table.y + tableHeight + NOTE_GAP },
+    { x: table.x, y: table.y - size.height - NOTE_GAP },
+    { x: table.x - size.width - NOTE_GAP, y: table.y },
+  ];
+  const obstacles = [
+    ...tables.map((t) => ({
+      x: t.x,
+      y: t.y,
+      width: layout.tableWidth,
+      height: getTableHeight(t, layout.tableWidth, false),
+    })),
+    ...plannedNotes,
+  ];
+  for (const candidate of candidates) {
+    const rect = { ...candidate, ...size };
+    if (!obstacles.some((o) => overlaps(rect, o))) return candidate;
+  }
+  return candidates[0];
+}
+
 /**
  * @param {{notes?:Array, areas?:Array}} input
  * @param {{tables:Array, notes:Array, areas:Array}} state live editor state
@@ -138,8 +176,9 @@ export function planAnnotations(input, state, layout) {
         errors.push({ path, message: `Table "${n.near}" does not exist.` });
         return;
       }
-      x = t.x + layout.tableWidth + NOTE_GAP;
-      y = t.y;
+      const lines = n.content.split("\n").length;
+      const size = { width: noteWidth, height: Math.max(88, 40 + lines * 20) };
+      ({ x, y } = placeNoteNear(t, size, tables, notes, layout));
     } else {
       x = (layout.pan?.x ?? 0) - noteWidth / 2;
       y = stackY;

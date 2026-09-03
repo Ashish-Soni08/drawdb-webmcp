@@ -470,14 +470,19 @@ export function createSchemaPairTools(bridge) {
   const arrangeTablesTool = {
     name: "arrange_tables",
     description:
-      "Auto-arrange all unlocked tables on the canvas using the editor's layout engine (related tables are placed near each other). Only positions change; the schema is untouched. One undo step.",
-    inputSchema: { type: "object", properties: {} },
-    execute: guard(bridge, "arrange_tables", async () => {
+      "Auto-arrange all unlocked tables on the canvas using the editor's layout engine (related tables are placed near each other). Only positions change; the schema is untouched. One undo step. spacing: 'comfortable' (default, leaves room for relationship labels and notes) or 'compact'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        spacing: { type: "string", enum: ["comfortable", "compact"] },
+      },
+    },
+    execute: guard(bridge, "arrange_tables", async (input) => {
       const state = bridge.getState();
       if (state.readOnly) {
         return toolFailure("read_only", "The editor is in read-only mode.");
       }
-      const moved = bridge.arrangeTables?.() ?? 0;
+      const moved = bridge.arrangeTables?.(input.spacing) ?? 0;
       return toolSuccess({
         movedTables: moved,
         message: moved

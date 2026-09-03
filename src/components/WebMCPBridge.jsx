@@ -248,10 +248,13 @@ export default function WebMCPBridge() {
       setBaseline(snapshot) {
         baselineRef.current = snapshot;
       },
-      arrangeTables() {
+      arrangeTables(spacing = "comfortable") {
         const s = stateRef.current;
         const { tables, relationships } = s.diagram;
-        const positions = autoArrange(tables, relationships, s.settings);
+        const positions = spreadPositions(
+          autoArrange(tables, relationships, s.settings),
+          spacing,
+        );
         const byId = new Map(positions.map((p) => [p.id, p]));
         const elements = [];
         for (const table of tables) {
@@ -451,6 +454,22 @@ export default function WebMCPBridge() {
       readOnly={layout.readOnly}
     />
   );
+}
+
+// drawDB's auto-arrange packs tables tightly, which hides relationship labels
+// between them. "comfortable" widens the gaps so labels and notes have room.
+const SPREAD = { compact: [1, 1], comfortable: [1.35, 1.25] };
+
+function spreadPositions(positions, spacing) {
+  const [fx, fy] = SPREAD[spacing] ?? SPREAD.comfortable;
+  if ((fx === 1 && fy === 1) || positions.length === 0) return positions;
+  const minX = Math.min(...positions.map((p) => p.x));
+  const minY = Math.min(...positions.map((p) => p.y));
+  return positions.map((p) => ({
+    id: p.id,
+    x: Math.round(minX + (p.x - minX) * fx),
+    y: Math.round(minY + (p.y - minY) * fy),
+  }));
 }
 
 /**

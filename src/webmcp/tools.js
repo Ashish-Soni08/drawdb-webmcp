@@ -259,6 +259,21 @@ function describeResult(raw) {
       summary: `listed ${parsed.diagrams.length} diagram(s), ${parsed.templates.length} template(s)`,
     };
   }
+  if (parsed.created) {
+    return { ok: true, summary: `created checkpoint "${parsed.created.name}"` };
+  }
+  if (parsed.restored) {
+    return {
+      ok: true,
+      summary: `restored checkpoint "${parsed.restored.name}"`,
+    };
+  }
+  if (parsed.checkpoints) {
+    return {
+      ok: true,
+      summary: `listed ${parsed.checkpoints.length} checkpoint(s)`,
+    };
+  }
   if (parsed.opening) {
     return {
       ok: true,
@@ -685,6 +700,71 @@ export function createSchemaPairTools(bridge) {
     }),
   };
 
+  const checkpointTool = {
+    name: "checkpoint",
+    description:
+      "Named snapshots of the schema for this editing session. action 'create' (optional name) saves the current tables/relationships/enums; 'list' shows them; 'restore' (name or id) swaps the diagram back to that snapshot as one undo step. The user can also restore from the Agent activity panel. Create one before risky changes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["create", "list", "restore"] },
+        name: {
+          type: "string",
+          description: "Checkpoint name (create) or name/id (restore).",
+        },
+      },
+      required: ["action"],
+    },
+    execute: guard(bridge, "checkpoint", async (input) => {
+      const state = bridge.getState();
+      const publicView = (c) => ({
+        id: c.id,
+        name: c.name,
+        at: new Date(c.at).toISOString(),
+        tables: c.tables,
+        relationships: c.relationships,
+      });
+      if (input.action === "list") {
+        const list = bridge.listCheckpoints?.() ?? [];
+        return toolSuccess({ checkpoints: list.map(publicView) });
+      }
+      if (input.action === "create") {
+        const created = bridge.createCheckpoint?.(
+          typeof input.name === "string" ? input.name.trim() : "",
+        );
+        if (!created)
+          return toolFailure(
+            "unavailable",
+            "Checkpoints are not available here.",
+          );
+        return toolSuccess({ created: publicView(created) });
+      }
+      if (input.action === "restore") {
+        if (state.readOnly)
+          return toolFailure("read_only", "The editor is in read-only mode.");
+        if (!input.name)
+          return toolFailure(
+            "invalid_request",
+            'Pass the checkpoint "name" or id to restore.',
+          );
+        const restored = bridge.restoreCheckpoint?.(input.name);
+        if (!restored)
+          return toolFailure(
+            "not_found",
+            `No checkpoint "${input.name}". Use action "list".`,
+          );
+        return toolSuccess({
+          restored: publicView(restored),
+          message: `Restored checkpoint "${restored.name}". The user can undo with Ctrl+Z.`,
+        });
+      }
+      return toolFailure(
+        "invalid_request",
+        'action must be "create", "list" or "restore".',
+      );
+    }),
+  };
+
   const joinPathTool = {
     name: "explain_join_path",
     description:
@@ -791,5 +871,6 @@ export function createSchemaPairTools(bridge) {
     checkQueryTool,
     listWorkspaceTool,
     openDiagramTool,
+    checkpointTool,
   ];
 }

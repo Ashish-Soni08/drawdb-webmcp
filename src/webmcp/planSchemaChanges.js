@@ -681,6 +681,7 @@ export function summarizeChanges(summary) {
     parts.push(`updated ${summary.updatedFields.length} field(s)`);
   if (summary.enums?.length)
     parts.push(`added ${summary.enums.length} enum(s)`);
+  if (summary.restored) parts.push(`restored checkpoint "${summary.restored}"`);
   return parts.length ? parts.join("; ") : "no changes";
 }
 

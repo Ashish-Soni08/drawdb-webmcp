@@ -126,6 +126,7 @@ test("exposes the thirteen tools with schemas and annotations", () => {
       "check_query",
       "list_workspace",
       "open_diagram",
+      "checkpoint",
     ],
   );
   for (const tool of tools) {
@@ -586,6 +587,65 @@ test("check_query, list_workspace and open_diagram go through the bridge", async
     false,
     "activity entries carry input and parsed output",
   );
+});
+
+test("checkpoint create/list/restore through the bridge", async () => {
+  const state = {
+    database: "postgresql",
+    tables: [{ id: "a", name: "a", fields: [] }],
+    relationships: [],
+    enums: [],
+    types: [],
+    readOnly: false,
+    tableWidth: 220,
+    pan: { x: 0, y: 0 },
+  };
+  const store = [];
+  const tools = createSchemaPairTools({
+    getState: () => state,
+    createCheckpoint: (name) => {
+      const c = {
+        id: `cp_${store.length + 1}`,
+        name: name || `checkpoint ${store.length + 1}`,
+        at: 1,
+        tables: state.tables.length,
+        relationships: 0,
+        snapshot: {},
+      };
+      store.unshift(c);
+      return c;
+    },
+    listCheckpoints: () => store,
+    restoreCheckpoint: (ref) =>
+      store.find((c) => c.id === ref || c.name === ref) ?? null,
+  });
+  const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+  const call = async (input) =>
+    JSON.parse(await byName.checkpoint.execute(input));
+
+  let r = await call({ action: "create", name: "before refactor" });
+  assert.equal(r.created.name, "before refactor");
+  r = await call({ action: "create" });
+  assert.equal(r.created.name, "checkpoint 2");
+  r = await call({ action: "list" });
+  assert.equal(r.checkpoints.length, 2);
+  assert.equal(
+    "snapshot" in r.checkpoints[0],
+    false,
+    "snapshots are not returned to the agent",
+  );
+  r = await call({ action: "restore", name: "before refactor" });
+  assert.equal(r.ok, true);
+  assert.equal(r.restored.name, "before refactor");
+  r = await call({ action: "restore", name: "nope" });
+  assert.equal(r.error.code, "not_found");
+  r = await call({ action: "restore" });
+  assert.equal(r.error.code, "invalid_request");
+  r = await call({ action: "delete" });
+  assert.equal(r.error.code, "invalid_request");
+  state.readOnly = true;
+  r = await call({ action: "restore", name: "before refactor" });
+  assert.equal(r.error.code, "read_only");
 });
 
 test("unexpected handler errors are returned as structured failures", async () => {

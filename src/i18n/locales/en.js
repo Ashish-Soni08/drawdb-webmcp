@@ -355,6 +355,9 @@ const en = {
     webmcp_reverted: "Reverted: {{message}}",
     webmcp_input: "Input",
     webmcp_output: "Output",
+    webmcp_checkpoints: "Checkpoints",
+    webmcp_restore: "Restore",
+    webmcp_agent_restored: "Restored checkpoint '{{name}}'",
   },
 };
 

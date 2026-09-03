@@ -34,6 +34,7 @@ let activeRegistration = null;
 
 const AGENT_UNDO_TAG = "schemapair-agent";
 const MAX_ACTIVITY_ENTRIES = 30;
+const MAX_CHECKPOINTS = 20;
 
 // Outcomes of past removal proposals so removal_status can report them.
 const decidedProposals = new Map();
@@ -65,6 +66,10 @@ export default function WebMCPBridge() {
   const [proposal, setProposal] = useState(null);
   const proposalRef = useRef(null);
   proposalRef.current = proposal;
+  // Named schema snapshots for this session; agent or human can restore one.
+  const [checkpoints, setCheckpoints] = useState([]);
+  const checkpointsRef = useRef([]);
+  const restoreCheckpointRef = useRef(() => {});
 
   // Registered handlers are created once; they read this ref on every call so
   // they always see the latest state and setters instead of a stale closure.
@@ -194,6 +199,43 @@ export default function WebMCPBridge() {
             custom: Boolean(tpl.custom),
           })),
         };
+      },
+      createCheckpoint(name) {
+        const s = stateRef.current;
+        const snapshot = snapshotSchema({
+          tables: s.diagram.tables,
+          relationships: s.diagram.relationships,
+          types: s.types,
+          enums: s.enums,
+        });
+        const checkpoint = {
+          id: `cp_${Date.now().toString(36)}`,
+          name: name || `checkpoint ${checkpointsRef.current.length + 1}`,
+          at: Date.now(),
+          tables: snapshot.tables.length,
+          relationships: snapshot.relationships.length,
+          snapshot,
+        };
+        const next = [checkpoint, ...checkpointsRef.current].slice(
+          0,
+          MAX_CHECKPOINTS,
+        );
+        checkpointsRef.current = next;
+        setCheckpoints(next);
+        return checkpoint;
+      },
+      listCheckpoints() {
+        return checkpointsRef.current;
+      },
+      restoreCheckpoint(ref) {
+        const list = checkpointsRef.current;
+        const lower = String(ref).toLowerCase();
+        const checkpoint =
+          list.find((c) => c.id === ref) ??
+          list.find((c) => c.name.toLowerCase() === lower);
+        if (!checkpoint) return null;
+        restoreCheckpointRef.current(checkpoint);
+        return checkpoint;
       },
       async openDiagram({ diagram, template }) {
         const lower = (v) => String(v).toLowerCase();
@@ -502,6 +544,35 @@ export default function WebMCPBridge() {
     });
   };
 
+  // Restoring a checkpoint is the same kind of change as an agent edit: one
+  // snapshot undo entry, the whole schema swapped, canvas untouched otherwise.
+  restoreCheckpointRef.current = (checkpoint) => {
+    const s = stateRef.current;
+    if (s.readOnly) return;
+    const before = {
+      tables: s.diagram.tables,
+      relationships: s.diagram.relationships,
+      enums: s.enums,
+    };
+    const message = t("webmcp_agent_restored", { name: checkpoint.name });
+    s.setUndoStack((prev) => [
+      ...prev,
+      {
+        action: Action.EDIT,
+        element: ObjectType.DBML,
+        data: { snapshot: before },
+        message,
+        source: AGENT_UNDO_TAG,
+      },
+    ]);
+    s.setRedoStack([]);
+    const restored = snapshotSchema(checkpoint.snapshot);
+    s.diagram.setTables(restored.tables);
+    s.diagram.setRelationships(restored.relationships);
+    s.setEnums(restored.enums);
+    Toast.info({ content: message, duration: 4 });
+  };
+
   if (!supported) return null;
 
   return (
@@ -513,6 +584,15 @@ export default function WebMCPBridge() {
       proposal={proposal}
       onConfirmProposal={() => decideProposal(true)}
       onRejectProposal={() => decideProposal(false)}
+      checkpoints={checkpoints}
+      onRestoreCheckpoint={(checkpoint) => {
+        restoreCheckpointRef.current(checkpoint);
+        record({
+          tool: "checkpoint",
+          ok: true,
+          summary: `restored checkpoint "${checkpoint.name}" (by you)`,
+        });
+      }}
       readOnly={layout.readOnly}
     />
   );

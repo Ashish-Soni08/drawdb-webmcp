@@ -19,6 +19,7 @@ const ICONS = {
   check_query: "bi-braces-asterisk",
   list_workspace: "bi-folder2-open",
   open_diagram: "bi-box-arrow-up-right",
+  checkpoint: "bi-bookmark-check",
   undo: "bi-arrow-counterclockwise",
 };
 
@@ -28,6 +29,7 @@ const MUTATING_TOOLS = [
   "arrange_tables",
   "annotate_diagram",
   "plan_removal",
+  "checkpoint",
 ];
 
 function formatTime(timestamp) {
@@ -179,6 +181,8 @@ export default function WebMCPActivityPanel({
   proposal,
   onConfirmProposal,
   onRejectProposal,
+  checkpoints = [],
+  onRestoreCheckpoint,
   readOnly,
 }) {
   const { t } = useTranslation();
@@ -220,6 +224,33 @@ export default function WebMCPActivityPanel({
             onReject={onRejectProposal}
             readOnly={readOnly}
           />
+        )}
+
+        {expanded && checkpoints.length > 0 && (
+          <div className="px-3 py-2 text-xs border-b border-zinc-300/40">
+            <div className="font-semibold mb-1">
+              <i className="bi bi-bookmark-check me-1" />
+              {t("webmcp_checkpoints")}
+            </div>
+            {checkpoints.slice(0, 5).map((checkpoint) => (
+              <div key={checkpoint.id} className="flex items-center gap-2 py-1">
+                <span className="truncate">{checkpoint.name}</span>
+                <span className="opacity-60 whitespace-nowrap">
+                  {checkpoint.tables}T · {checkpoint.relationships}R ·{" "}
+                  {formatTime(checkpoint.at)}
+                </span>
+                <Button
+                  size="small"
+                  theme="light"
+                  className="ms-auto"
+                  disabled={readOnly}
+                  onClick={() => onRestoreCheckpoint?.(checkpoint)}
+                >
+                  {t("webmcp_restore")}
+                </Button>
+              </div>
+            ))}
+          </div>
         )}
 
         {expanded && (

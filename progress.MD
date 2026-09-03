@@ -1,12 +1,12 @@
 # SchemaPair WebMCP — Progress and Agent Handoff
 
-Last updated: 2026-09-03 21:30 IST — thirteen tools + activity panel with removal confirmation implemented and verified locally; **not committed, not pushed, not deployed**.
+Last updated: 2026-09-03 21:30 IST — sixteen tools + activity panel with removal confirmation implemented and verified locally; **not committed, not pushed, not deployed**.
 
 ## Read this first
 
 This repository is a fork of drawDB being adapted for The WebMCP Challenge. The product name is **SchemaPair**.
 
-Thirteen WebMCP tools and an on-canvas agent-activity panel (with a human-only removal confirmation card) are implemented and verified end-to-end in real Chrome 152 against both the dev server and the production bundle. Remaining work is the submission package (commit, deploy, deployed-URL test, video, Devpost), which needs explicit user approval before pushing/deploying.
+Sixteen WebMCP tools and an on-canvas agent-activity panel (with a human-only removal confirmation card) are implemented and verified end-to-end in real Chrome 152 against both the dev server and the production bundle. Remaining work is the submission package (commit, deploy, deployed-URL test, video, Devpost), which needs explicit user approval before pushing/deploying.
 
 Also read `CLAUDE.md` (repo working rules) and `docs/WEBMCP_PLAN.md` (original plan and gates).
 
@@ -34,6 +34,7 @@ Also read `CLAUDE.md` (repo working rules) and `docs/WEBMCP_PLAN.md` (original p
 | Tier 1: activity panel with undo, pan-to-change, validate suggestions | Done, verified |
 | Tier 2: `import_sql`, `arrange_tables` | Done, verified |
 | Tier 3: `review_schema`, `generate_migration` | Done, verified |
+| Extension round (deadline moved +12h): `check_query` (validate SQL against the diagram), `list_workspace` + `open_diagram` (saved diagrams and built-in templates), expandable activity entries with tool input/output, note placement collision avoidance, comfortable arrange spacing | Done, verified (52 unit, 64 browser checks) |
 | Extras requested afterwards: `plan_removal` + `removal_status` (human-confirmed delete), `annotate_diagram` (notes/areas), `generate_sample_inserts`, `explain_join_path` | Done, verified |
 | Gate 4: deploy + deployed-URL test | **Done** — `https://schemapair.vercel.app`, `Origin-Agent-Cluster: ?1` confirmed, browser harness 57/57 + fallback against the live URL (2026-09-03 22:05 IST) |
 | Gate 5: repo public, video, Devpost | Repo public on `main` (`https://github.com/Ashish-Soni08/drawdb-webmcp`); video + Devpost form are the user's remaining steps (see `docs/SUBMISSION.md`) |
@@ -60,7 +61,7 @@ Also read `CLAUDE.md` (repo working rules) and `docs/WEBMCP_PLAN.md` (original p
 | `src/webmcp/annotate.js` | Plans notes (optionally next to a table) and areas sized around member tables. |
 | `src/webmcp/sampleData.js` | Deterministic INSERTs, parents first (Kahn ordering), dialect quoting. |
 | `src/webmcp/joinPath.js` | BFS over relationships → hops + SELECT/JOIN skeleton. |
-| `src/webmcp/tools.js` | The thirteen tool definitions wired to a `bridge` (`getState`, `applyChanges`, `record`, `getBaseline`/`setBaseline`, `arrangeTables`, `proposeRemoval`/`getProposal`, `addAnnotations`). Read-only mode → `read_only`; exceptions → `internal_error`; every call recorded to the activity trail. |
+| `src/webmcp/tools.js` | The sixteen tool definitions wired to a `bridge` (`getState`, `applyChanges`, `record`, `getBaseline`/`setBaseline`, `arrangeTables`, `proposeRemoval`/`getProposal`, `addAnnotations`). Read-only mode → `read_only`; exceptions → `internal_error`; every call recorded to the activity trail. |
 | `src/components/WebMCPBridge.jsx` | Mounted in `src/pages/Editor.jsx`. Ref-backed state (no stale closures), single registration under an AbortController with a module-level guard, cleanup on unmount. Mutations push one `ObjectType.DBML` snapshot undo entry (tagged `source: "schemapair-agent"`) and commit via `setTables`/`setRelationships`/`setEnums`; `arrange_tables` pushes drawDB's bulk MOVE entry. Pans to and selects changed tables. Captures the migration baseline as "latest state seen with an empty undo stack" (= the loaded diagram). |
 | `src/components/WebMCPActivityPanel.jsx` | Floating "Agent activity" trail (only when WebMCP is present) with "Undo last agent change" (enabled only while the agent's entry is the top of the undo stack), Clear, and the **removal confirmation card** (Confirm removal / Reject). Confirm applies the planned state as one snapshot undo step; the agent has no way to confirm. |
 | `src/webmcp/*.test.js` (46 tests) | Planner, describe, registration, suggestions, review, migration, import, and tool-level tests (read-only, dry run, activity trail, full loops). `npm test` = Node's runner + `scripts/test-loader.mjs` (resolves extension-less/directory imports, stubs image assets). |

@@ -65,7 +65,8 @@ Read `progress.MD` first in every session; it is the hand-off document. Keep it 
 - Keep tool names/descriptions stable; agents and the demo depend on them. Current tools:
   `inspect_schema`, `apply_schema_changes`, `validate_schema`, `generate_sql`, `import_sql`,
   `review_schema`, `generate_migration`, `arrange_tables`, `plan_removal`, `removal_status`,
-  `annotate_diagram`, `generate_sample_inserts`, `explain_join_path`.
+  `annotate_diagram`, `generate_sample_inserts`, `explain_join_path`, `check_query`,
+  `list_workspace`, `open_diagram`.
 - Destructive changes are proposal-only: `plan_removal` computes impact and shows a card in
   the activity panel; only a human click in `WebMCPActivityPanel` applies it. Never add a
   tool parameter that lets an agent confirm a removal.

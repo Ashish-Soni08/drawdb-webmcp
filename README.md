@@ -3,7 +3,7 @@
     <h3>Agent-native database diagramming powered by drawDB and WebMCP</h3>
 </div>
 
-SchemaPair is a WebMCP-enabled fork of [drawDB](https://github.com/drawdb-io/drawdb), built for [The WebMCP Challenge](https://webmcp.devpost.com/). It keeps the full drawDB editor and adds thirteen browser-native [WebMCP](https://developer.chrome.com/docs/ai/webmcp) tools, so an AI agent running in the browser can inspect the diagram that is open on the canvas, make bounded schema changes, validate the result, and generate SQL — while the human keeps the visual canvas, undo, and final control.
+SchemaPair is a WebMCP-enabled fork of [drawDB](https://github.com/drawdb-io/drawdb), built for [The WebMCP Challenge](https://webmcp.devpost.com/). It keeps the full drawDB editor and adds sixteen browser-native [WebMCP](https://developer.chrome.com/docs/ai/webmcp) tools, so an AI agent running in the browser can inspect the diagram that is open on the canvas, make bounded schema changes, validate the result, and generate SQL — while the human keeps the visual canvas, undo, and final control.
 
 SchemaPair retains the original project's **AGPL-3.0 license** and credits the drawDB project and its contributors. Challenge-period work starts at upstream commit `5efc5fd10a27241f0844dfd31efff4a9e53a61fb`; everything added for the challenge lives in `src/webmcp/`, `src/components/WebMCPBridge.jsx`, `scripts/`, `docs/`, and the three-line mount in `src/pages/Editor.jsx` (plus `vercel.json` headers and the `test` script).
 
@@ -19,17 +19,20 @@ Registered on `document.modelContext` only while the editor route is open, and o
 | `apply_schema_changes` | mutating | Adds tables, columns, indexes, and relationships, or updates safe properties. The whole request is validated first; on any error nothing changes. Max 25 operations per call, `dryRun` supported. Every call is one undo step and the canvas pans to the change. |
 | `validate_schema` | read-only | Runs drawDB's built-in issue engine and returns ready-to-apply `suggestions` (operations) for mechanically fixable problems. |
 | `review_schema` | read-only | Design review beyond hard errors: foreign keys without indexes, nullable FKs, missing timestamps, unsized VARCHARs, isolated tables, naming. Each finding has a severity and, where safe, a `fix` operation. |
+| `check_query` | read-only | Validates a SELECT/INSERT/UPDATE/DELETE against the diagram without running it: unknown tables or columns, ambiguous names, joins without ON, and filter/join columns lacking an index (with `add_index` operations). |
 | `generate_sql` | read-only | Generates DDL for the diagram's dialect (or any dialect for generic diagrams). Text only — never executed. |
 | `generate_migration` | read-only | Up/down migration SQL between the diagram as loaded (or the last `resetBaseline`) and its current state, via drawDB's migration generator. |
 | `generate_sample_inserts` | read-only | Deterministic `INSERT` statements with sample rows, parents before children so foreign keys resolve. |
 | `explain_join_path` | read-only | Shortest chain of foreign keys between two tables plus a `SELECT … JOIN` skeleton. |
 | `import_sql` | mutating | Imports `CREATE TABLE` DDL as new tables and relationships using drawDB's SQL importer. Append-only, rejects name collisions, links foreign keys to tables already on the canvas, one undo step. |
-| `annotate_diagram` | mutating | Adds sticky notes (optionally next to a table) and subject areas sized to wrap the tables they group. Undoable. |
-| `arrange_tables` | mutating (layout only) | Auto-arranges tables with the editor's layout engine. One undo step. |
+| `annotate_diagram` | mutating | Adds sticky notes (placed in free space next to a table) and subject areas sized to wrap the tables they group. Undoable. |
+| `arrange_tables` | mutating (layout only) | Auto-arranges tables with the editor's layout engine, with comfortable spacing so relationship labels stay readable. One undo step. |
 | `plan_removal` | proposal | Proposes removing tables, columns, relationships, or indexes and returns the full cascade impact. **Nothing is deleted**: a confirmation card appears in the editor and only the human can click Confirm (or Reject). Confirmed removals are one undo step. |
 | `removal_status` | read-only | Reports whether a proposal is pending, confirmed, rejected, or superseded. |
+| `list_workspace` | read-only | Lists the diagrams saved in this browser and the built-in templates. |
+| `open_diagram` | navigation | Opens a saved diagram or starts from a built-in template; the current diagram is autosaved first. |
 
-An **Agent activity** panel on the canvas lists every tool call, hosts the removal confirmation card, and offers an "Undo last agent change" button, so the human always sees and controls what the agent did.
+An **Agent activity** panel on the canvas lists every tool call (click one to see its exact input and output), hosts the removal confirmation card, and offers an "Undo last agent change" button, so the human always sees and controls what the agent did.
 
 ### Try it with an agent
 
@@ -45,6 +48,8 @@ An **Agent activity** panel on the canvas lists every tool call, hosts the remov
    - "Add sample data inserts and show me how to join users to invoices."
    - "Group the billing tables into an area and add a note explaining invoices."
    - "Remove the invoices table." (the agent proposes; you confirm in the Agent activity panel)
+   - "Does this query still work against the schema? SELECT u.email FROM users u JOIN subscriptions s ON s.user_id = u.id"
+   - "Open the blog template and show me what it contains."
    - "Tidy up the layout."
    - Press Ctrl+Z on the canvas to undo the agent's last change.
 

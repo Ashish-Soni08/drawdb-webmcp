@@ -16,6 +16,9 @@ const ICONS = {
   annotate_diagram: "bi-sticky",
   generate_sample_inserts: "bi-table",
   explain_join_path: "bi-diagram-3",
+  check_query: "bi-braces-asterisk",
+  list_workspace: "bi-folder2-open",
+  open_diagram: "bi-box-arrow-up-right",
   undo: "bi-arrow-counterclockwise",
 };
 
@@ -33,6 +36,59 @@ function formatTime(timestamp) {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+const DETAIL_LIMIT = 4000;
+
+function pretty(value) {
+  if (value === undefined) return "";
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return text.length > DETAIL_LIMIT
+    ? `${text.slice(0, DETAIL_LIMIT)}\n…`
+    : text;
+}
+
+/** One tool call; click to reveal the exact input and output JSON. */
+function ActivityEntry({ entry, open, onToggle }) {
+  const { t } = useTranslation();
+  const hasDetails = entry.input !== undefined || entry.output !== undefined;
+  return (
+    <div className="px-3 py-2 text-xs border-b border-zinc-300/20 last:border-b-0">
+      <div
+        className={`flex items-center gap-2 ${hasDetails ? "cursor-pointer" : ""}`}
+        onClick={hasDetails ? onToggle : undefined}
+      >
+        <i
+          className={`bi ${ICONS[entry.tool] ?? "bi-lightning"} ${
+            entry.ok ? "" : "text-red-500"
+          }`}
+        />
+        <span className="font-medium">{entry.tool}</span>
+        <span className="ms-auto opacity-60">{formatTime(entry.at)}</span>
+        {hasDetails && (
+          <i
+            className={`bi ${open ? "bi-chevron-up" : "bi-chevron-down"} opacity-60`}
+          />
+        )}
+      </div>
+      <div className={`mt-1 ${entry.ok ? "" : "text-red-500"}`}>
+        {entry.summary}
+      </div>
+      {open && (
+        <div className="mt-2 space-y-1">
+          <div className="opacity-60">{t("webmcp_input")}</div>
+          <pre className="whitespace-pre-wrap break-all max-h-32 overflow-y-auto rounded bg-zinc-500/10 p-2">
+            {pretty(entry.input)}
+          </pre>
+          <div className="opacity-60">{t("webmcp_output")}</div>
+          <pre className="whitespace-pre-wrap break-all max-h-40 overflow-y-auto rounded bg-zinc-500/10 p-2">
+            {pretty(entry.output)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -127,6 +183,7 @@ export default function WebMCPActivityPanel({
 }) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  const [openEntryId, setOpenEntryId] = useState(null);
   const changes = entries.filter(
     (e) => MUTATING_TOOLS.includes(e.tool) && e.ok,
   );
@@ -174,25 +231,16 @@ export default function WebMCPActivityPanel({
             ) : (
               <div className="max-h-64 overflow-y-auto">
                 {entries.map((entry) => (
-                  <div
+                  <ActivityEntry
                     key={entry.id}
-                    className="px-3 py-2 text-xs border-b border-zinc-300/20 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-2">
-                      <i
-                        className={`bi ${ICONS[entry.tool] ?? "bi-lightning"} ${
-                          entry.ok ? "" : "text-red-500"
-                        }`}
-                      />
-                      <span className="font-medium">{entry.tool}</span>
-                      <span className="ms-auto opacity-60">
-                        {formatTime(entry.at)}
-                      </span>
-                    </div>
-                    <div className={`mt-1 ${entry.ok ? "" : "text-red-500"}`}>
-                      {entry.summary}
-                    </div>
-                  </div>
+                    entry={entry}
+                    open={openEntryId === entry.id}
+                    onToggle={() =>
+                      setOpenEntryId((id) =>
+                        id === entry.id ? null : entry.id,
+                      )
+                    }
+                  />
                 ))}
               </div>
             )}

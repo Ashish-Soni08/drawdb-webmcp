@@ -353,6 +353,8 @@ const en = {
     webmcp_agent_added_note: "Agent: added note '{{name}}'",
     webmcp_agent_annotated: "Agent: added {{notes}} notes, {{areas}} areas",
     webmcp_reverted: "Reverted: {{message}}",
+    webmcp_input: "Input",
+    webmcp_output: "Output",
   },
 };
 
